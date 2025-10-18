@@ -71,19 +71,21 @@ def test_api():
     
     try:
         # Send request with streaming enabled
-        response = requests.post(url, json=payload, stream=True, timeout=600)
+        response = requests.post(url, json=payload, stream=True, timeout=1800)  # 30 minute timeout
         
         if response.status_code != 200:
             print(f"\n❌ Error: API returned status code {response.status_code}")
             print(f"Response: {response.text}")
             return
         
-        print("✅ Connection established. Streaming workflow responses...\n")
-        print("=" * 70)
+        print("✅ Connection established. Streaming workflow responses...")
+        print("⏱️  Note: First request may take 5-10 minutes (Kanoon API fetching)")
+        print("\n" + "=" * 70)
         print("WORKFLOW EXECUTION:")
         print("=" * 70 + "\n")
         
         event_count = 0
+        last_update = ""
         
         # Stream responses
         for line in response.iter_lines():
@@ -102,15 +104,24 @@ def test_api():
                         status = data.get('status', 'unknown')
                         content = str(data.get('content', ''))
                         
-                        # Display event
-                        print(f"\n📨 Event #{event_count}")
-                        print(f"Status: {status}")
-                        
-                        # Show first 300 characters of content
-                        if len(content) > 300:
-                            print(f"Content: {content[:300]}...")
+                        # Show compact progress
+                        if status == "progress":
+                            # Extract agent name if present
+                            if "Agent '" in content:
+                                print(f"✓ {content}")
+                            else:
+                                # Show first 200 chars for other progress
+                                if content != last_update:  # Avoid duplicate prints
+                                    print(f"⏳ {content[:200]}")
+                                    last_update = content
                         else:
-                            print(f"Content: {content}")
+                            # Display full content for non-progress events
+                            print(f"\n📨 Event #{event_count}")
+                            print(f"Status: {status}")
+                            if len(content) > 300:
+                                print(f"Content: {content[:300]}...")
+                            else:
+                                print(f"Content: {content}")
                         
                         # Check if workflow is complete
                         if status == "done":
@@ -119,7 +130,11 @@ def test_api():
                             print("=" * 70)
                             break
                         
-                        print("-" * 70)
+                        if status == "error":
+                            print("\n" + "=" * 70)
+                            print("❌ WORKFLOW ERROR")
+                            print("=" * 70)
+                            break
                         
                     except json.JSONDecodeError as e:
                         print(f"⚠️  Warning: Could not parse JSON: {e}")
@@ -136,7 +151,7 @@ def test_api():
         sys.exit(1)
         
     except requests.exceptions.Timeout:
-        print("\n⚠️  Warning: Request timed out after 10 minutes")
+        print("\n⚠️  Warning: Request timed out after 30 minutes")
         print("The workflow might still be running on the server.")
         
     except KeyboardInterrupt:

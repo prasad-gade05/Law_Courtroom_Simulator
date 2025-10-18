@@ -42,6 +42,7 @@ Thumbs.db
 private_documents/
 chroma_db/
 _archive/
+my_graph.png
 
 # API Keys and secrets
 *.key

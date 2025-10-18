@@ -149,17 +149,23 @@ class FetchingAgent:
         for keyword in keywords:
             print(f"- {keyword}")
 
-        # Specify max_docs per keyword
-        MAX_DOCS_PER_KEYWORD = 2
+        # Specify max_docs per keyword (reduced for faster demo)
+        MAX_DOCS_PER_KEYWORD = 1  # Reduced from 2 to 1 for faster execution
+        MAX_KEYWORDS = 3  # Reduced from 5 to 3
 
         all_doc_ids = []
-        for keyword in keywords[:5]: # Use only the first 5 keywords
-            print(f"Searching for keyword: {keyword}")
-            doc_ids = ikapi.save_search_results(keyword, max_docs=MAX_DOCS_PER_KEYWORD)
-            all_doc_ids.extend(doc_ids)
+        for idx, keyword in enumerate(keywords[:MAX_KEYWORDS], 1):
+            print(f"[{idx}/{MAX_KEYWORDS}] Searching for keyword: {keyword[:80]}...")  # Truncate for display
+            try:
+                doc_ids = ikapi.save_search_results(keyword, max_docs=MAX_DOCS_PER_KEYWORD)
+                all_doc_ids.extend(doc_ids)
+                print(f"    Found {len(doc_ids)} documents")
+            except Exception as e:
+                print(f"    Error fetching: {e}")
+                continue
             
         # Print the total number of documents fetched
-        print(f"Total documents fetched: {len(all_doc_ids)}")
+        print(f"✓ Total documents fetched: {len(all_doc_ids)}")
 
         # converting fetched json data from the API to texts, not doing it 
         # Path to the 'public' directory
@@ -228,4 +234,15 @@ class FetchingAgent:
         #             print(f"Error deleting folder {unique_folder_path}: {e}")
 
         # time.sleep(10)
-
+        
+        # Return state to continue workflow
+        from langchain_core.messages import HumanMessage
+        
+        response = {
+            "messages": [HumanMessage(content=f"Fetched {len(all_doc_ids)} relevant legal cases from Kanoon API based on extracted keywords.", name="kanoon_fetcher")],
+            "next": "prosecutor",
+            "thought_step": 0,
+            "caller": "kanoon_fetcher"
+        }
+        
+        return response

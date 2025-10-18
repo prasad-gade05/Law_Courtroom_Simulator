@@ -182,71 +182,136 @@ class TrialWorkflow:
     async def run(self, user_prompt: str):
         """
         Run the trial workflow as an async generator.
-        Handles the main execution loop including user feedback.
+        Streams all workflow states until completion.
         
         Args:
             user_prompt: Initial prompt to start the trial
         """
-        # Set up initial state
-        initial_state = AgentState(
-            messages=[HumanMessage(content=user_prompt)],
-            next="kanoon_fetcher",
-            thought_step=0,
-        )
+        try:
+            # Set up initial state
+            initial_state = AgentState(
+                messages=[HumanMessage(content=user_prompt)],
+                next="kanoon_fetcher",
+                thought_step=0,
+            )
 
-        print(f"Initial state: {initial_state}")
+            print(f"Initial state: {initial_state}")
 
-        thread = {"configurable": {"thread_id": "1"}}
+            thread = {"configurable": {"thread_id": "1"}}
 
-        yield {
-            "status": "progress",
-            "content": "Initializing workflow...",
-        }
-
-        # Stream initial workflow states
-        async for state in self.graph.astream(initial_state, thread):
-            print(state)
-            print("-" * 100)
             yield {
                 "status": "progress",
-                "content": repr(state)
+                "content": "Initializing workflow...",
             }
 
-        # Simulate user feedback loop
-        user_input = "argument is not strong"
-
-        while True:
-            # Process user feedback
-            self.graph.update_state(values={"user_feedback": user_input}, as_node="user_feedback")
-
-            async for state in self.graph.astream(None, thread):
-                print(state)
-                print("-" * 100)
-                yield {
-                    "status": "progress",
-                    "content": repr(state)
-                }
-                
-            # Check for workflow completion
+            # Stream workflow states
             try:
-                if state.judge.next == 'END':
-                    yield {"status": "done", "content": "Workflow completed successfully"}
-                    break
-            except AttributeError:
-                pass
-        
-        # Run the workflow
-        # final_state = await self.graph.ainvoke(initial_state)
-        
-        # Extract results
-        # return {
-        #     "messages": final_state["messages"],
-        #     "verdict": next(
-        #         (msg for msg in reversed(final_state["messages"]) 
-        #          if hasattr(msg, "name") and msg.name == "judge"),
-        #         None
-        #     )
-        # }
+                iteration_count = 0
+                max_iterations = 50  # Prevent infinite loops
+                
+                async for state in self.graph.astream(initial_state, thread, stream_mode="updates"):
+                    iteration_count += 1
+                    print(f"\n{'='*100}")
+                    print(f"Iteration {iteration_count}:")
+                    print(state)
+                    print('='*100)
+                    
+                    # Check if state is None or empty
+                    if state is None or not state:
+                        print("Warning: Received empty state, skipping...")
+                        continue
+                    
+                    # Extract node name and output
+                    node_name = list(state.keys())[0] if state else "unknown"
+                    node_output = state.get(node_name, {})
+                    
+                    # Yield progress
+                    yield {
+                        "status": "progress",
+                        "content": f"Agent '{node_name}' completed",
+                        "data": repr(state)
+                    }
+                    
+                    # Check for END condition
+                    if isinstance(node_output, dict):
+                        next_node = node_output.get("next")
+                        if next_node == "END":
+                            print("\n✅ Workflow reached END state")
+                            yield {"status": "done", "content": "Workflow completed with verdict"}
+                            return
+                        
+                        # Check if we're at user_feedback (interrupt point)
+                        if next_node == "user_feedback":
+                            print("\n⏸️  Reached user feedback checkpoint")
+                            # For now, we'll provide automatic feedback and continue
+                            # In production, this would wait for user input
+                            feedback_message = "Please strengthen the arguments with more legal precedents."
+                            
+                            # Update state with feedback
+                            self.graph.update_state(
+                                thread,
+                                {"messages": [HumanMessage(content=feedback_message, name="user")]},
+                                as_node="user_feedback"
+                            )
+                            
+                            # Continue streaming
+                            async for resume_state in self.graph.astream(None, thread, stream_mode="updates"):
+                                iteration_count += 1
+                                print(f"\n{'='*100}")
+                                print(f"Iteration {iteration_count} (after feedback):")
+                                print(resume_state)
+                                print('='*100)
+                                
+                                if not resume_state:
+                                    continue
+                                    
+                                resume_node = list(resume_state.keys())[0]
+                                resume_output = resume_state.get(resume_node, {})
+                                
+                                yield {
+                                    "status": "progress",
+                                    "content": f"Agent '{resume_node}' completed",
+                                    "data": repr(resume_state)
+                                }
+                                
+                                if isinstance(resume_output, dict) and resume_output.get("next") == "END":
+                                    print("\n✅ Workflow reached END state")
+                                    yield {"status": "done", "content": "Workflow completed with verdict"}
+                                    return
+                                
+                                if iteration_count >= max_iterations:
+                                    print(f"\n⚠️  Reached max iterations ({max_iterations})")
+                                    yield {"status": "done", "content": "Workflow completed (max iterations reached)"}
+                                    return
+                    
+                    # Safety check for max iterations
+                    if iteration_count >= max_iterations:
+                        print(f"\n⚠️  Reached max iterations ({max_iterations})")
+                        yield {"status": "done", "content": "Workflow completed (max iterations reached)"}
+                        return
+                            
+            except Exception as e:
+                print(f"Error in workflow stream: {e}")
+                import traceback
+                traceback.print_exc()
+                yield {
+                    "status": "error",
+                    "content": f"Workflow error: {str(e)}"
+                }
+                return
+
+            # If we reach here without END, workflow completed normally
+            print("\n✅ Workflow stream ended naturally")
+            yield {"status": "done", "content": "Workflow completed successfully"}
+            
+        except Exception as e:
+            print(f"Fatal error in workflow: {e}")
+            import traceback
+            traceback.print_exc()
+            yield {
+                "status": "error",
+                "content": f"Fatal workflow error: {str(e)}"
+            }
     
     def visualize(self):
         """

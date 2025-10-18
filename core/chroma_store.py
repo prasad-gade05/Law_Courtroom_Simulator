@@ -91,8 +91,16 @@ class ChromaVectorStore:
             )
             print(" ✓")
             
-            # Process and index documents from path
-            self._index_documents()
+            # Check if collection already has data (skip re-indexing)
+            existing_count = self.vectorstore._collection.count()
+            if existing_count > 0:
+                print(f"\n✅ Found existing vector store with {existing_count} embeddings")
+                print(f"⚡ Skipping re-indexing (data already cached)")
+                print(f"   Delete '{self.persist_directory}' folder to force re-indexing")
+            else:
+                print(f"\n📝 No existing data found - will index documents")
+                # Process and index documents from path
+                self._index_documents()
             
             print(f"\n✅ ChromaVectorStore '{self.name}' initialized successfully!")
             print(f"{'='*60}\n")

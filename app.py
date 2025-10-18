@@ -55,8 +55,7 @@ workflow = TrialWorkflow(
     web_searcher=WebSearcherAgent(llm=llm_0),
 )
 
-# Visualize workflow
-workflow.visualize()
+# Visualization removed - graph not needed in production
 
 @app.post("/stream_workflow")
 async def stream_workflow(user_prompt: str = Body(..., embed=True)):
