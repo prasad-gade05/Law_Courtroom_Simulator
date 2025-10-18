@@ -1,0 +1,42 @@
+# Core Framework
+fastapi>=0.104.0
+uvicorn>=0.24.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# LangChain & LangGraph
+langchain>=0.1.0
+langchain-community>=0.3.9
+langchain-text-splitters>=0.0.1
+langgraph>=0.0.10
+
+# Ollama Integration
+ollama>=0.1.0
+
+# Vector Store (Windows-compatible)
+chromadb>=0.4.22
+
+# Document Processing (Windows-compatible)
+pymupdf>=1.23.0
+python-docx>=0.8.11
+openpyxl>=3.1.2
+
+# Utilities
+colorama>=0.4.6
+rich>=13.0.0
+python-dotenv>=1.0.0
+streamlit>=1.28.0
+
+# Web Search
+duckduckgo-search>=3.9.0
+requests>=2.31.0
+
+# CrewAI for web search agents
+crewai>=0.1.0
+crewai-tools>=0.1.0
+
+# UI Components
+opencv-python>=4.8.0
+
+# Additional LangChain dependencies
+langchain-core>=0.1.0
