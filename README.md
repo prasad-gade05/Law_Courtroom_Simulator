@@ -1,10 +1,10 @@
-# PathRAG Court Simulator
+# Law Courtroom Simulator
 
 An AI-powered legal case simulation platform that recreates authentic courtroom proceedings using multi-agent orchestration, RAG (Retrieval-Augmented Generation), and local LLMs via Ollama.
 
 ## 🎯 Overview
 
-PathRAG Court Simulator enables users to:
+Law Courtroom Simulator enables users to:
 
 - **Simulate legal proceedings** with AI agents (Judge, Lawyer, Prosecutor)
 - **Test legal arguments** in a risk-free environment
@@ -59,8 +59,8 @@ ollama pull nomic-embed-text
 #### 3. Clone the Repository
 
 ```bash
-git clone <repository-url>
-cd Inter-IIT-Pathway-PathRAG-Court-Simulator
+git https://github.com/prasad-gade05/Law_Courtroom_Simulator
+cd Law_Courtroom_Simulator
 ```
 
 #### 4. Run Automated Setup
