@@ -42,33 +42,33 @@ class ChromaVectorStore:
         Path(self.persist_directory).mkdir(parents=True, exist_ok=True)
         
         print(f"\n{'='*60}")
-        print(f"🚀 Initializing ChromaVectorStore: '{self.name}'")
+        print(f"Initializing ChromaVectorStore: '{self.name}'")
         print(f"{'='*60}")
-        print(f"📂 Documents path: {self.path}")
-        print(f"💾 Persist directory: {self.persist_directory}")
-        print(f"🤖 Embedding model: {self.embedding_model}")
+        print(f"Documents path: {self.path}")
+        print(f"Persist directory: {self.persist_directory}")
+        print(f"Embedding model: {self.embedding_model}")
         print()
         
         try:
             # Initialize Ollama embeddings
-            print(f"🔧 Initializing Ollama embeddings...", end='', flush=True)
+            print(f"Initializing Ollama embeddings...", end='', flush=True)
             self.embeddings = OllamaEmbeddings(
                 model=self.embedding_model,
                 base_url="http://localhost:11434"
             )
-            print(" ✓")
+            print(" [OK]")
             
             # Initialize text splitter
-            print(f"✂️  Initializing text splitter (chunk_size=5000)...", end='', flush=True)
+            print(f"Initializing text splitter (chunk_size=5000)...", end='', flush=True)
             self.text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=5000,
                 chunk_overlap=10,
                 length_function=len,
             )
-            print(" ✓")
+            print(" [OK]")
             
             # Initialize ChromaDB client with persistence
-            print(f"🗄️  Initializing ChromaDB client...", end='', flush=True)
+            print(f"Initializing ChromaDB client...", end='', flush=True)
             self.chroma_client = chromadb.PersistentClient(
                 path=self.persist_directory,
                 settings=Settings(
@@ -76,33 +76,33 @@ class ChromaVectorStore:
                     allow_reset=True
                 )
             )
-            print(" ✓")
+            print(" [OK]")
             
             # Create or get collection
             self.collection_name = f"{name}_collection"
             
             # Initialize vector store
-            print(f"📦 Initializing vector store collection '{self.collection_name}'...", end='', flush=True)
+            print(f"Initializing vector store collection '{self.collection_name}'...", end='', flush=True)
             self.vectorstore = Chroma(
                 client=self.chroma_client,
                 collection_name=self.collection_name,
                 embedding_function=self.embeddings,
                 persist_directory=self.persist_directory,
             )
-            print(" ✓")
+            print(" [OK]")
             
             # Check if collection already has data (skip re-indexing)
             existing_count = self.vectorstore._collection.count()
             if existing_count > 0:
-                print(f"\n✅ Found existing vector store with {existing_count} embeddings")
-                print(f"⚡ Skipping re-indexing (data already cached)")
+                print(f"\n[CACHE] Found existing vector store with {existing_count} embeddings")
+                print(f"[CACHE] Skipping re-indexing (data already cached)")
                 print(f"   Delete '{self.persist_directory}' folder to force re-indexing")
             else:
-                print(f"\n📝 No existing data found - will index documents")
+                print(f"\n[NEW] No existing data found - will index documents")
                 # Process and index documents from path
                 self._index_documents()
             
-            print(f"\n✅ ChromaVectorStore '{self.name}' initialized successfully!")
+            print(f"\nChromaVectorStore '{self.name}' initialized successfully!")
             print(f"{'='*60}\n")
             
         except Exception as e:
@@ -120,14 +120,14 @@ class ChromaVectorStore:
         doc_path = Path(self.path)
         
         if not doc_path.exists():
-            print(f"⚠️  Warning: Document path '{self.path}' does not exist. Creating empty store.")
+            print(f"[WARNING] Document path '{self.path}' does not exist. Creating empty store.")
             return
         
         # Get all supported document files
         supported_extensions = ['.txt', '.pdf', '.docx', '.doc']
         document_files = []
         
-        print(f"📂 Scanning for documents in '{self.path}'...")
+        print(f"Scanning for documents in '{self.path}'...")
         for ext in supported_extensions:
             found = list(doc_path.glob(f'**/*{ext}'))
             if found:
@@ -135,10 +135,10 @@ class ChromaVectorStore:
             document_files.extend(found)
         
         if not document_files:
-            print(f"⚠️  Warning: No documents found in '{self.path}'. Store will be empty.")
+            print(f"[WARNING] No documents found in '{self.path}'. Store will be empty.")
             return
         
-        print(f"\n📄 Total documents to process: {len(document_files)}")
+        print(f"\nTotal documents to process: {len(document_files)}")
         print("=" * 60)
         
         # Process each document
@@ -148,19 +148,19 @@ class ChromaVectorStore:
         for doc_idx, doc_file in enumerate(document_files, 1):
             try:
                 print(f"\n[{doc_idx}/{len(document_files)}] Processing: {doc_file.name}")
-                print(f"   📖 Reading file...", end='', flush=True)
+                print(f"   Reading file...", end='', flush=True)
                 
                 text = self._extract_text(doc_file)
-                print(f" ✓ ({len(text)} characters)")
+                print(f" [OK] ({len(text)} characters)")
                 
                 if text.strip():
                     # Split into chunks
-                    print(f"   ✂️  Splitting into chunks...", end='', flush=True)
+                    print(f"   Splitting into chunks...", end='', flush=True)
                     chunks = self.text_splitter.split_text(text)
-                    print(f" ✓ ({len(chunks)} chunks)")
+                    print(f" [OK] ({len(chunks)} chunks)")
                     
                     # Create metadata for each chunk
-                    print(f"   📝 Creating metadata...", end='', flush=True)
+                    print(f"   Creating metadata...", end='', flush=True)
                     for i, chunk in enumerate(chunks):
                         all_texts.append(chunk)
                         all_metadatas.append({
@@ -169,18 +169,18 @@ class ChromaVectorStore:
                             "chunk_index": i,
                             "total_chunks": len(chunks)
                         })
-                    print(f" ✓")
+                    print(f" [OK]")
                 else:
-                    print(f"   ⚠️  File is empty or unreadable")
+                    print(f"   [WARNING] File is empty or unreadable")
                 
             except Exception as e:
-                print(f"\n   ❌ Error processing {doc_file.name}: {e}")
+                print(f"\n   [ERROR] processing {doc_file.name}: {e}")
                 continue
         
         # Add all documents to vector store
         if all_texts:
             print("\n" + "=" * 60)
-            print(f"🔄 Generating embeddings and indexing {len(all_texts)} chunks...")
+            print(f"Generating embeddings and indexing {len(all_texts)} chunks...")
             print(f"   This may take a few minutes for the first run...")
             print(f"   Progress: ", end='', flush=True)
             
@@ -203,16 +203,16 @@ class ChromaVectorStore:
                 # Visual progress bar
                 bar_length = 40
                 filled = int(bar_length * current_batch / total_batches)
-                bar = '█' * filled + '░' * (bar_length - filled)
+                bar = '#' * filled + '-' * (bar_length - filled)
                 
                 print(f"\r   Progress: [{bar}] {progress_pct:.1f}% ({i+len(batch_texts)}/{len(all_texts)} chunks)", 
                       end='', flush=True)
             
             print()  # New line after progress bar
-            print(f"✅ Successfully indexed {len(all_texts)} chunks from {len(document_files)} documents")
+            print(f"Successfully indexed {len(all_texts)} chunks from {len(document_files)} documents")
             print("=" * 60)
         else:
-            print("\n⚠️  No text content extracted from documents.")
+            print("\n[WARNING] No text content extracted from documents.")
     
     def _extract_text(self, file_path: Path) -> str:
         """

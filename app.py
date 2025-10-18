@@ -41,11 +41,27 @@ llms = [
     ),
 ]
 
-print(f"✓ Initialized Ollama LLMs with base URL: {ollama_base_url}")
-print(f"  Primary model: {os.getenv('OLLAMA_MODEL_MAIN', 'llama3.1:8b')}")
-print(f"  Fallback models: {len(llms)} configured")
+print("="*80)
+print("OLLAMA LLM INITIALIZATION")
+print("="*80)
+print(f"Ollama Base URL: {ollama_base_url}")
+print(f"Primary Model: {os.getenv('OLLAMA_MODEL_MAIN', 'llama3.1:8b')}")
+print(f"Advanced Model: {os.getenv('OLLAMA_MODEL_ADVANCED', 'mistral:7b')}")
+print("Primary LLM initialized successfully")
+print(f"Fallback LLM count: {len(llms)}")
+print("="*80)
 
 # Initialize Workflow
+print("\nWORKFLOW INITIALIZATION")
+print("="*80)
+print("Creating agent instances...")
+print("  - LawyerAgent")
+print("  - ProsecutorAgent")
+print("  - JudgeAgent")
+print("  - RetrieverAgent")
+print("  - FetchingAgent (Kanoon)")
+print("  - WebSearcherAgent")
+
 workflow = TrialWorkflow(
     lawyer=LawyerAgent(llms=llms),
     prosecutor=ProsecutorAgent(llms=llms),
@@ -55,17 +71,28 @@ workflow = TrialWorkflow(
     web_searcher=WebSearcherAgent(llm=llm_0),
 )
 
-# Visualization removed - graph not needed in production
+print("All agents initialized successfully")
+print("Workflow graph compiled")
+print("="*80)
 
 @app.post("/stream_workflow")
 async def stream_workflow(user_prompt: str = Body(..., embed=True)):
+    print("\n" + "="*80)
+    print("NEW API REQUEST RECEIVED")
+    print("="*80)
+    print(f"Prompt length: {len(user_prompt)} characters")
+    print(f"First 200 chars: {user_prompt[:200]}...")
+    print("Starting workflow stream...")
+    print("="*80)
+    
     async def event_generator():
+        event_count = 0
         async for state in workflow.run(user_prompt=user_prompt):
-            # # Ensure state is serialized properly
-            # if isinstance(state["state"], str):
-            #     # Parse string-like dictionaries back into JSON
-            #     state["state"] = json.loads(state["state"].replace("'", '"'))  # Convert single quotes to double quotes if needed
+            event_count += 1
+            print(f"[API] Sending event #{event_count} to client: {state.get('status', 'unknown')}")
             yield f"data: {json.dumps(state)}\n\n"
+        print(f"[API] Stream completed. Total events sent: {event_count}")
+        print("="*80)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 

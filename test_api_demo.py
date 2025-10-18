@@ -55,107 +55,127 @@ def test_api():
         "user_prompt": SAMPLE_CASE
     }
     
-    print("=" * 70)
+    print("=" * 80)
     print("PathRAG Court Simulator - API Demo")
-    print("=" * 70)
-    print("\n📋 Case Summary:")
-    print("-" * 70)
+    print("=" * 80)
+    print("\nCase Summary:")
+    print("-" * 80)
     print("Defendant: Rohan Malhotra (28, Entrepreneur)")
     print("Charges: Defamation (IPC 499) + Cyber Harassment (IT Act 2000)")
     print("Defense: Account hacking/compromise")
-    print("-" * 70)
+    print("-" * 80)
     
-    print("\n🔄 Sending case to API...")
-    print(f"Endpoint: {url}")
-    print(f"Payload size: {len(json.dumps(payload))} bytes")
+    print("\n[CLIENT] Sending case to API...")
+    print(f"[CLIENT] Endpoint: {url}")
+    print(f"[CLIENT] Payload size: {len(json.dumps(payload))} bytes")
+    print(f"[CLIENT] Timeout: 1800 seconds (30 minutes)")
     
     try:
+        import time
+        request_start = time.time()
+        
         # Send request with streaming enabled
-        response = requests.post(url, json=payload, stream=True, timeout=1800)  # 30 minute timeout
+        print("\n[CLIENT] Establishing connection...")
+        response = requests.post(url, json=payload, stream=True, timeout=1800)
         
         if response.status_code != 200:
-            print(f"\n❌ Error: API returned status code {response.status_code}")
+            print(f"\n[ERROR] API returned status code {response.status_code}")
             print(f"Response: {response.text}")
             return
         
-        print("✅ Connection established. Streaming workflow responses...")
-        print("⏱️  Note: First request may take 5-10 minutes (Kanoon API fetching)")
-        print("\n" + "=" * 70)
+        connection_time = time.time() - request_start
+        print(f"[CLIENT] Connection established in {connection_time:.2f}s")
+        print("[CLIENT] Streaming workflow responses...")
+        print("[NOTE] First agent (Kanoon Fetcher) may take 3-5 minutes (external API)")
+        print("\n" + "=" * 80)
         print("WORKFLOW EXECUTION:")
-        print("=" * 70 + "\n")
+        print("=" * 80 + "\n")
         
         event_count = 0
         last_update = ""
+        last_event_time = time.time()
         
         # Stream responses
         for line in response.iter_lines():
             if line:
+                current_time = time.time()
+                time_since_last = current_time - last_event_time
+                
                 # Decode the line
                 line_text = line.decode('utf-8')
                 
                 # Parse SSE format (data: {...})
                 if line_text.startswith('data: '):
                     event_count += 1
+                    elapsed = current_time - request_start
                     
                     try:
                         # Parse JSON data
-                        data = json.loads(line_text[6:])  # Remove 'data: ' prefix
+                        data = json.loads(line_text[6:])
                         
                         status = data.get('status', 'unknown')
                         content = str(data.get('content', ''))
+                        extra_data = data.get('data', '')
                         
                         # Show compact progress
+                        print(f"\n[Event #{event_count}] Time: {elapsed:.1f}s (delta: {time_since_last:.1f}s)")
+                        print(f"  Status: {status}")
+                        
                         if status == "progress":
                             # Extract agent name if present
                             if "Agent '" in content:
-                                print(f"✓ {content}")
+                                agent_name = content.split("'")[1] if "'" in content else "unknown"
+                                print(f"  Agent: {agent_name}")
+                                if extra_data:
+                                    print(f"  Info: {extra_data}")
                             else:
-                                # Show first 200 chars for other progress
-                                if content != last_update:  # Avoid duplicate prints
-                                    print(f"⏳ {content[:200]}")
+                                if content != last_update:
+                                    print(f"  Content: {content[:150]}")
                                     last_update = content
                         else:
                             # Display full content for non-progress events
-                            print(f"\n📨 Event #{event_count}")
-                            print(f"Status: {status}")
-                            if len(content) > 300:
-                                print(f"Content: {content[:300]}...")
+                            if len(content) > 200:
+                                print(f"  Content: {content[:200]}...")
                             else:
-                                print(f"Content: {content}")
+                                print(f"  Content: {content}")
                         
                         # Check if workflow is complete
                         if status == "done":
-                            print("\n" + "=" * 70)
-                            print("✅ WORKFLOW COMPLETE")
-                            print("=" * 70)
+                            print("\n" + "=" * 80)
+                            print("WORKFLOW COMPLETE")
+                            print("=" * 80)
                             break
                         
                         if status == "error":
-                            print("\n" + "=" * 70)
-                            print("❌ WORKFLOW ERROR")
-                            print("=" * 70)
+                            print("\n" + "=" * 80)
+                            print("WORKFLOW ERROR")
+                            print("=" * 80)
                             break
                         
+                        last_event_time = current_time
+                        
                     except json.JSONDecodeError as e:
-                        print(f"⚠️  Warning: Could not parse JSON: {e}")
+                        print(f"[WARNING] Could not parse JSON: {e}")
                         print(f"Raw line: {line_text[:200]}")
         
-        print(f"\n📊 Summary:")
-        print(f"Total events received: {event_count}")
-        print("\n✅ Demo completed successfully!")
+        total_time = time.time() - request_start
+        print(f"\n[SUMMARY]")
+        print(f"  Total events received: {event_count}")
+        print(f"  Total time: {total_time:.1f}s ({total_time/60:.1f} minutes)")
+        print("\n[CLIENT] Demo completed successfully!")
         
     except requests.exceptions.ConnectionError:
-        print("\n❌ Error: Could not connect to API server")
+        print("\n[ERROR] Could not connect to API server")
         print("Make sure the server is running:")
         print("  python app.py")
         sys.exit(1)
         
     except requests.exceptions.Timeout:
-        print("\n⚠️  Warning: Request timed out after 30 minutes")
+        print("\n[WARNING] Request timed out after 30 minutes")
         print("The workflow might still be running on the server.")
         
     except KeyboardInterrupt:
-        print("\n\n⚠️  Demo interrupted by user (Ctrl+C)")
+        print("\n\n[INTERRUPTED] Demo interrupted by user (Ctrl+C)")
         sys.exit(0)
         
     except Exception as e:
@@ -166,24 +186,24 @@ def test_api():
 
 def main():
     """Main function"""
-    print("\n🚀 Starting API Demo...\n")
+    print("\n[CLIENT] Starting API Demo...\n")
     
     # Check if user wants to use custom case file
     if len(sys.argv) > 1:
         case_file = sys.argv[1]
-        print(f"📁 Loading case from file: {case_file}")
+        print(f"[CLIENT] Loading case from file: {case_file}")
         
         try:
             with open(case_file, 'r', encoding='utf-8') as f:
                 global SAMPLE_CASE
                 SAMPLE_CASE = f.read()
-            print(f"✅ Loaded {len(SAMPLE_CASE)} characters from file\n")
+            print(f"[CLIENT] Loaded {len(SAMPLE_CASE)} characters from file\n")
         except FileNotFoundError:
-            print(f"❌ Error: File '{case_file}' not found")
-            print("Using default sample case instead\n")
+            print(f"[ERROR] File '{case_file}' not found")
+            print("[CLIENT] Using default sample case instead\n")
         except Exception as e:
-            print(f"❌ Error reading file: {e}")
-            print("Using default sample case instead\n")
+            print(f"[ERROR] Error reading file: {e}")
+            print("[CLIENT] Using default sample case instead\n")
     
     # Run the test
     test_api()

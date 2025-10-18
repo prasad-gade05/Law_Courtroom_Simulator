@@ -187,6 +187,13 @@ class TrialWorkflow:
         Args:
             user_prompt: Initial prompt to start the trial
         """
+        import time
+        workflow_start_time = time.time()
+        
+        print("\n" + "="*80)
+        print("WORKFLOW EXECUTION STARTED")
+        print("="*80)
+        
         try:
             # Set up initial state
             initial_state = AgentState(
@@ -195,57 +202,75 @@ class TrialWorkflow:
                 thought_step=0,
             )
 
-            print(f"Initial state: {initial_state}")
+            print(f"Initial state created")
+            print(f"  Starting node: kanoon_fetcher")
+            print(f"  Thought step: 0")
+            print(f"  Message count: {len(initial_state['messages'])}")
 
             thread = {"configurable": {"thread_id": "1"}}
 
             yield {
                 "status": "progress",
-                "content": "Initializing workflow...",
+                "content": "Workflow initialized, starting execution...",
             }
 
             # Stream workflow states
             try:
                 iteration_count = 0
-                max_iterations = 50  # Prevent infinite loops
+                max_iterations = 50
+                
+                print(f"\nStarting workflow stream (max {max_iterations} iterations)")
+                print("-"*80)
                 
                 async for state in self.graph.astream(initial_state, thread, stream_mode="updates"):
+                    iteration_start = time.time()
                     iteration_count += 1
-                    print(f"\n{'='*100}")
-                    print(f"Iteration {iteration_count}:")
-                    print(state)
-                    print('='*100)
+                    
+                    print(f"\n[ITERATION {iteration_count}] Started")
+                    print(f"  Time elapsed: {time.time() - workflow_start_time:.1f}s")
                     
                     # Check if state is None or empty
                     if state is None or not state:
-                        print("Warning: Received empty state, skipping...")
+                        print("  WARNING: Received empty state, skipping...")
                         continue
                     
                     # Extract node name and output
                     node_name = list(state.keys())[0] if state else "unknown"
                     node_output = state.get(node_name, {})
                     
+                    print(f"  Node: {node_name}")
+                    
+                    if isinstance(node_output, dict):
+                        next_node = node_output.get("next", "unknown")
+                        message_count = len(node_output.get("messages", []))
+                        print(f"  Next node: {next_node}")
+                        print(f"  Messages in state: {message_count}")
+                    
                     # Yield progress
                     yield {
                         "status": "progress",
                         "content": f"Agent '{node_name}' completed",
-                        "data": repr(state)
+                        "data": f"Iteration {iteration_count}, Next: {next_node if isinstance(node_output, dict) else 'unknown'}"
                     }
+                    
+                    iteration_time = time.time() - iteration_start
+                    print(f"  Duration: {iteration_time:.2f}s")
                     
                     # Check for END condition
                     if isinstance(node_output, dict):
                         next_node = node_output.get("next")
                         if next_node == "END":
-                            print("\n✅ Workflow reached END state")
+                            print(f"\n[WORKFLOW END] Reached END state at iteration {iteration_count}")
+                            print(f"Total time: {time.time() - workflow_start_time:.1f}s")
                             yield {"status": "done", "content": "Workflow completed with verdict"}
                             return
                         
                         # Check if we're at user_feedback (interrupt point)
                         if next_node == "user_feedback":
-                            print("\n⏸️  Reached user feedback checkpoint")
-                            # For now, we'll provide automatic feedback and continue
-                            # In production, this would wait for user input
+                            print(f"\n[USER FEEDBACK] Checkpoint reached at iteration {iteration_count}")
                             feedback_message = "Please strengthen the arguments with more legal precedents."
+                            
+                            print(f"  Providing automatic feedback: {feedback_message[:80]}...")
                             
                             # Update state with feedback
                             self.graph.update_state(
@@ -254,44 +279,61 @@ class TrialWorkflow:
                                 as_node="user_feedback"
                             )
                             
+                            print(f"  Resuming workflow after feedback...")
+                            
                             # Continue streaming
                             async for resume_state in self.graph.astream(None, thread, stream_mode="updates"):
+                                resume_start = time.time()
                                 iteration_count += 1
-                                print(f"\n{'='*100}")
-                                print(f"Iteration {iteration_count} (after feedback):")
-                                print(resume_state)
-                                print('='*100)
+                                
+                                print(f"\n[ITERATION {iteration_count}] Started (post-feedback)")
+                                print(f"  Time elapsed: {time.time() - workflow_start_time:.1f}s")
                                 
                                 if not resume_state:
+                                    print("  WARNING: Empty resume state, skipping...")
                                     continue
                                     
                                 resume_node = list(resume_state.keys())[0]
                                 resume_output = resume_state.get(resume_node, {})
                                 
+                                print(f"  Node: {resume_node}")
+                                
+                                if isinstance(resume_output, dict):
+                                    resume_next = resume_output.get("next", "unknown")
+                                    print(f"  Next node: {resume_next}")
+                                
                                 yield {
                                     "status": "progress",
                                     "content": f"Agent '{resume_node}' completed",
-                                    "data": repr(resume_state)
+                                    "data": f"Iteration {iteration_count}, Post-feedback"
                                 }
                                 
+                                resume_time = time.time() - resume_start
+                                print(f"  Duration: {resume_time:.2f}s")
+                                
                                 if isinstance(resume_output, dict) and resume_output.get("next") == "END":
-                                    print("\n✅ Workflow reached END state")
+                                    print(f"\n[WORKFLOW END] Reached END state at iteration {iteration_count}")
+                                    print(f"Total time: {time.time() - workflow_start_time:.1f}s")
                                     yield {"status": "done", "content": "Workflow completed with verdict"}
                                     return
                                 
                                 if iteration_count >= max_iterations:
-                                    print(f"\n⚠️  Reached max iterations ({max_iterations})")
+                                    print(f"\n[MAX ITERATIONS] Reached limit of {max_iterations}")
+                                    print(f"Total time: {time.time() - workflow_start_time:.1f}s")
                                     yield {"status": "done", "content": "Workflow completed (max iterations reached)"}
                                     return
                     
                     # Safety check for max iterations
                     if iteration_count >= max_iterations:
-                        print(f"\n⚠️  Reached max iterations ({max_iterations})")
+                        print(f"\n[MAX ITERATIONS] Reached limit of {max_iterations}")
+                        print(f"Total time: {time.time() - workflow_start_time:.1f}s")
                         yield {"status": "done", "content": "Workflow completed (max iterations reached)"}
                         return
                             
             except Exception as e:
-                print(f"Error in workflow stream: {e}")
+                print(f"\n[ERROR] Workflow stream exception")
+                print(f"  Error type: {type(e).__name__}")
+                print(f"  Error message: {str(e)}")
                 import traceback
                 traceback.print_exc()
                 yield {
@@ -301,11 +343,15 @@ class TrialWorkflow:
                 return
 
             # If we reach here without END, workflow completed normally
-            print("\n✅ Workflow stream ended naturally")
+            print(f"\n[WORKFLOW END] Stream ended naturally")
+            print(f"Total time: {time.time() - workflow_start_time:.1f}s")
+            print(f"Total iterations: {iteration_count}")
             yield {"status": "done", "content": "Workflow completed successfully"}
             
         except Exception as e:
-            print(f"Fatal error in workflow: {e}")
+            print(f"\n[FATAL ERROR] Workflow exception")
+            print(f"  Error type: {type(e).__name__}")
+            print(f"  Error message: {str(e)}")
             import traceback
             traceback.print_exc()
             yield {

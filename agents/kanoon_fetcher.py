@@ -107,14 +107,25 @@ class FetchingAgent:
         if not kanoon_api_key:
             raise ValueError("KANOON_API_KEY not found in environment variables.")
 
+        import time
+        start_time = time.time()
+        
+        print("\n" + "="*80)
+        print("KANOON FETCHER AGENT - STARTED")
+        print("="*80)
+        print(f"User case message length: {len(state['messages'][-1].content)} characters")
+        
         data_directory = "public_documents"
         os.makedirs(data_directory, exist_ok=True)
         filestorage = FileStorage(data_directory)
 
+        print(f"Data directory: {data_directory}")
+        print(f"Initializing Indian Kanoon API client...")
+
         args = argparse.Namespace(
             token=kanoon_api_key,
             datadir=data_directory,
-            maxpages=2,  # Limit number of pages
+            maxpages=2,
             maxcites=0,
             maxcitedby=0,
             orig=False,
@@ -123,11 +134,13 @@ class FetchingAgent:
 
         # Initialize Indian Kanoon API client
         ikapi = IKApi(args, filestorage)
+        print(f"API client initialized")
 
         # List to store the content of the text files uploaded by user
         folder_path = 'private_documents'
         documents = []
 
+        print(f"\nReading user documents from: {folder_path}")
         # Loop through all files in the folder
         for filename in os.listdir(folder_path):
             # Check if the file is a text file
@@ -138,34 +151,62 @@ class FetchingAgent:
                 with open(file_path, 'r', encoding='utf-8') as file:
                     content = file.read()
                     documents.append(content)
+                    print(f"  Loaded: {filename} ({len(content)} chars)")
+
+        print(f"Total documents loaded: {len(documents)}")
 
         # Extract Keywords
+        print("\n" + "-"*80)
+        print("KEYWORD EXTRACTION - STEP 1")
+        print("-"*80)
+        print("Invoking KeywordExtractorAgent...")
+        keyword_start = time.time()
+        
         agent = KeywordExtractorAgent(documents=documents, llms=self.llms)
-        keywords_result = await agent.extract_keywords(user_case=state["messages"][-1].content)  # Await the coroutine
+        keywords_result = await agent.extract_keywords(user_case=state["messages"][-1].content)
+        
+        keyword_time = time.time() - keyword_start
+        print(f"Keyword extraction completed in {keyword_time:.1f}s")
+        print(f"Keywords extracted: {len(keywords_result.get('keywords', []))}")
 
         # Step 2: Use Extracted Keywords for Searching Relevant Cases
+        print("\n" + "-"*80)
+        print("KANOON API SEARCH - STEP 2")
+        print("-"*80)
         print("Extracted Keywords:")
         keywords = keywords_result["keywords"]
-        for keyword in keywords:
-            print(f"- {keyword}")
+        for idx, keyword in enumerate(keywords, 1):
+            print(f"  [{idx}] {keyword[:100]}")  # Truncate long keywords
 
         # Specify max_docs per keyword (reduced for faster demo)
-        MAX_DOCS_PER_KEYWORD = 1  # Reduced from 2 to 1 for faster execution
-        MAX_KEYWORDS = 3  # Reduced from 5 to 3
+        MAX_DOCS_PER_KEYWORD = 1
+        MAX_KEYWORDS = 3
+
+        print(f"\nSearch parameters:")
+        print(f"  Max keywords to use: {MAX_KEYWORDS}")
+        print(f"  Max documents per keyword: {MAX_DOCS_PER_KEYWORD}")
+        print(f"  Expected API calls: {MAX_KEYWORDS}")
+        print(f"  Estimated time: {MAX_KEYWORDS * 60}-{MAX_KEYWORDS * 120} seconds")
 
         all_doc_ids = []
         for idx, keyword in enumerate(keywords[:MAX_KEYWORDS], 1):
-            print(f"[{idx}/{MAX_KEYWORDS}] Searching for keyword: {keyword[:80]}...")  # Truncate for display
+            print(f"\n[{idx}/{MAX_KEYWORDS}] Searching keyword: {keyword[:80]}...")
+            keyword_start_time = time.time()
             try:
                 doc_ids = ikapi.save_search_results(keyword, max_docs=MAX_DOCS_PER_KEYWORD)
                 all_doc_ids.extend(doc_ids)
-                print(f"    Found {len(doc_ids)} documents")
+                keyword_time = time.time() - keyword_start_time
+                print(f"            Found {len(doc_ids)} documents in {keyword_time:.1f}s")
             except Exception as e:
-                print(f"    Error fetching: {e}")
+                print(f"            Error: {str(e)[:100]}")
                 continue
             
         # Print the total number of documents fetched
-        print(f"✓ Total documents fetched: {len(all_doc_ids)}")
+        total_time = time.time() - start_time
+        print(f"\nSearch completed:")
+        print(f"  Total documents fetched: {len(all_doc_ids)}")
+        print(f"  Total time: {total_time:.1f}s")
+        print("-"*80)
 
         # converting fetched json data from the API to texts, not doing it 
         # Path to the 'public' directory
