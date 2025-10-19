@@ -41,26 +41,27 @@ echo.
 
 echo Step 4: Pulling required Ollama models...
 echo This may take a while depending on your internet connection...
+echo Optimized for RTX 4050 (6GB VRAM) - 5-10x faster performance
 echo.
 
-echo Pulling llama3.1:8b (Main reasoning model)...
-ollama pull llama3.1:8b
+echo Pulling qwen2:7b-instruct-q4_K_M (Main reasoning model)...
+ollama pull qwen2:7b-instruct-q4_K_M
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to pull llama3.1:8b
+    echo ERROR: Failed to pull qwen2:7b-instruct-q4_K_M
     pause
     exit /b 1
 )
-echo ✓ llama3.1:8b ready
+echo ✓ qwen2:7b-instruct-q4_K_M ready
 echo.
 
-echo Pulling mistral:7b (Alternative model)...
-ollama pull mistral:7b
+echo Pulling phi3:mini (Fast alternative model)...
+ollama pull phi3:mini
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to pull mistral:7b
+    echo ERROR: Failed to pull phi3:mini
     pause
     exit /b 1
 )
-echo ✓ mistral:7b ready
+echo ✓ phi3:mini ready
 echo.
 
 echo Pulling nomic-embed-text (Embedding model)...

@@ -34,7 +34,7 @@ def check_ollama():
 
 def check_ollama_models():
     """Check if required Ollama models are available"""
-    required_models = ["llama3.1:8b", "mistral:7b", "nomic-embed-text"]
+    required_models = ["qwen2:7b-instruct-q4_K_M", "phi3:mini", "nomic-embed-text"]
     try:
         import requests
         response = requests.get("http://localhost:11434/api/tags", timeout=2)
@@ -149,7 +149,7 @@ def main():
         print("\nCommon fixes:")
         print("  - Install Ollama: https://ollama.com/download/windows")
         print("  - Start Ollama: ollama serve")
-        print("  - Pull models: ollama pull llama3.1:8b")
+        print("  - Pull models: ollama pull qwen2:7b-instruct-q4_K_M")
         print("  - Install deps: pip install -r requirements.txt")
     
     print()

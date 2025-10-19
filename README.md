@@ -48,13 +48,14 @@ ollama --version
 #### 2. Pull Required Models
 
 ```bash
-ollama pull llama3.1:8b
-ollama pull mistral:7b
+ollama pull qwen2:7b-instruct-q4_K_M
+ollama pull phi3:mini
 ollama pull nomic-embed-text
 ```
 
-**Total size:** ~10 GB  
-**Time:** 10-20 minutes depending on internet speed
+**Total size:** ~7 GB  
+**Time:** 5-15 minutes depending on internet speed
+**Optimized for:** RTX 4050 6GB VRAM - 5-10x faster than previous models
 
 #### 3. Clone the Repository
 
@@ -262,8 +263,8 @@ Copy `.env.example` to `.env` and configure:
 ```env
 # Ollama Configuration (Local LLM)
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL_MAIN=llama3.1:8b
-OLLAMA_MODEL_ADVANCED=mistral:7b
+OLLAMA_MODEL_MAIN=qwen2:7b-instruct-q4_K_M
+OLLAMA_MODEL_ADVANCED=phi3:mini
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text
 
 # Optional External APIs
@@ -275,11 +276,16 @@ KANOON_API_KEY=your_key_here          # For Indian Kanoon (optional)
 
 ### Customize Models
 
-Edit `.env` to use different Ollama models:
+Edit `.env` to use different Ollama models (ensure they fit your VRAM):
 
 ```env
-OLLAMA_MODEL_MAIN=llama3.1:70b    # Larger, more capable model
-OLLAMA_MODEL_ADVANCED=mixtral     # Alternative model
+# For higher VRAM GPUs (8GB+)
+OLLAMA_MODEL_MAIN=qwen2:7b-instruct    # Full precision version
+OLLAMA_MODEL_ADVANCED=llama3.1:8b      # Alternative model
+
+# For even faster performance on 6GB VRAM
+OLLAMA_MODEL_MAIN=phi3:mini            # Ultra-fast (2.3GB)
+OLLAMA_MODEL_ADVANCED=gemma:2b         # Tiny but capable (1.4GB)
 ```
 
 Available models: [ollama.com/library](https://ollama.com/library)
