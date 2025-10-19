@@ -1,486 +1,1019 @@
-# Law Courtroom Simulator
+# Law Courtroom Simulator 🏛️⚖️
 
-An AI-powered legal case simulation platform that recreates authentic courtroom proceedings using multi-agent orchestration, RAG (Retrieval-Augmented Generation), and local LLMs via Ollama.
+An AI-powered legal case simulation platform that recreates authentic courtroom proceedings using multi-agent orchestration, RAG (Retrieval-Augmented Generation), and **Google Gemini 2.5 Flash Lite** for fast, cloud-based inference.
 
-## 🎯 Overview
+## 🎯 What Is This?
 
-Law Courtroom Simulator enables users to:
+Law Courtroom Simulator is a virtual courtroom where AI agents simulate a real legal trial. Think of it as a video game for lawyers where you can:
 
-- **Simulate legal proceedings** with AI agents (Judge, Lawyer, Prosecutor)
-- **Test legal arguments** in a risk-free environment
-- **Access legal knowledge** from IPC and precedent cases
-- **Get instant feedback** on legal strategies
-- **Run completely free** using local Ollama models (no API costs)
+- **Practice legal cases** without real-world consequences
+- **Test arguments** before going to actual court
+- **Learn from AI judges, lawyers, and prosecutors**
+- **Get instant legal research** from Indian laws and precedents
+- **Experiment with different defense strategies**
 
 ### Key Features
 
-✅ **Multi-Agent System** - Judge, Lawyer, Prosecutor, Legal Retriever  
-✅ **100% Local & Free** - Runs on Ollama (no external API costs)  
-✅ **Windows Native** - Fully compatible with Windows 10/11  
-✅ **Privacy First** - All data stays on your machine  
-✅ **RAG-Powered** - Retrieves relevant legal documents and precedents  
-✅ **Interactive UI** - Streamlit interface + REST API
+✅ **6 AI Agents** - Judge, Defense Lawyer, Prosecutor, Legal Researcher, Case Finder, Web Searcher  
+✅ **Cloud-Powered** - Google Gemini 2.5 Flash Lite (fastest model)  
+✅ **No GPU Needed** - Runs entirely in the cloud  
+✅ **Under 5 Minutes** - Complete legal simulations fast  
+✅ **Smart Research** - Automatically finds relevant laws and cases  
+✅ **Two Interfaces** - Web UI (Streamlit) + REST API
+
+## 📋 Table of Contents
+
+1. [How It Works (Simple Explanation)](#-how-it-works-simple-explanation)
+2. [Quick Start (Setup in 10 Minutes)](#-quick-start-setup-in-10-minutes)
+3. [Running the Application](#-running-the-application)
+4. [Using Your Own Cases](#-using-your-own-cases)
+5. [Understanding the Agents](#-understanding-the-agents)
+6. [Configuration Options](#-configuration-options)
+7. [Troubleshooting](#-troubleshooting)
+8. [Project Structure](#-project-structure)
+9. [API Reference](#-api-reference)
+10. [Cost & Performance](#-cost--performance)
 
 ---
 
-## 🚀 Quick Start
+## 🧠 How It Works (Simple Explanation)
 
-### Prerequisites
+Imagine a courtroom with 6 AI people working together:
 
-1. **Windows 10/11** (tested on Windows 11)
-2. **Python 3.9+** ([Download](https://www.python.org/downloads/))
-3. **Ollama** ([Download](https://ollama.com/download/windows))
-4. **15+ GB free disk space**
-5. **8+ GB RAM** (16 GB recommended)
+### The 6 AI Agents (Characters):
 
-### Installation
+1. **👨‍⚖️ Judge** - Controls everything, decides who speaks, gives final verdict
+2. **🛡️ Defense Lawyer** - Defends you, builds arguments in your favor
+3. **⚔️ Prosecutor** - Argues against you, finds evidence of wrongdoing
+4. **📚 Legal Retriever** - Searches Indian Penal Code (IPC) for relevant laws
+5. **🔍 Kanoon Fetcher** - Finds similar past court cases from Indian Kanoon
+6. **🌐 Web Searcher** - Searches internet for additional legal info
 
-#### 1. Install Ollama
+### What Happens When You Run It:
 
-Download and install Ollama from [ollama.com/download/windows](https://ollama.com/download/windows)
-
-Verify installation:
-
-```bash
-ollama --version
+```
+You submit a case → Kanoon Fetcher finds similar cases → 
+Prosecutor builds case against you → Judge reviews → 
+Legal Retriever finds relevant laws → Defense Lawyer argues for you → 
+You give feedback → Cycle repeats 5-10 times → 
+Judge gives final verdict
 ```
 
-#### 2. Pull Required Models
+### The Technology Stack:
+
+- **Google Gemini 2.5 Flash Lite** - The AI "brain" (runs in cloud, no GPU needed)
+- **ChromaDB** - Smart filing system for legal documents
+- **FastAPI** - Communication system (REST API)
+- **Streamlit** - Visual web interface
+- **LangGraph** - Orchestrates the agent workflow
+
+---
+
+## 🚀 Quick Start (Setup in 10 Minutes)
+
+### Step 1: Prerequisites ✅
+
+Before starting, make sure you have:
+
+- **Windows 10/11** (tested on Windows 11)
+- **Python 3.9 or higher** - [Download here](https://www.python.org/downloads/)
+- **Internet connection** (required for cloud API)
+- **8+ GB RAM** (16 GB recommended)
+- **5 GB free disk space**
+
+### Step 2: Get Google AI API Key (Free) 🔑
+
+1. Visit **[Google AI Studio](https://aistudio.google.com/app/apikey)**
+2. Sign in with your Google account
+3. Click **"Create API Key"** or **"Get API Key"**
+4. Copy the key (looks like: `AIzaSyB1234...`)
+5. **Save it** - you'll need it in Step 5
+
+**Free Tier Limits:**
+- 15 requests per minute
+- 1 million tokens per day
+- Perfect for personal use and testing
+
+### Step 3: Download the Project 📥
 
 ```bash
-ollama pull qwen2:7b-instruct-q4_K_M
-ollama pull phi3:mini
-ollama pull nomic-embed-text
-```
-
-**Total size:** ~7 GB  
-**Time:** 5-15 minutes depending on internet speed
-**Optimized for:** RTX 4050 6GB VRAM - 5-10x faster than previous models
-
-#### 3. Clone the Repository
-
-```bash
-git https://github.com/prasad-gade05/Law_Courtroom_Simulator
+# Clone the repository
+git clone https://github.com/prasad-gade05/Law_Courtroom_Simulator
 cd Law_Courtroom_Simulator
 ```
 
-#### 4. Run Automated Setup
+Or download as ZIP and extract.
+
+### Step 4: Automated Installation 🔧
+
+Run the setup script (does everything automatically):
 
 ```bash
 setup.bat
 ```
 
-This will:
+**What this does:**
+- ✅ Checks if Python is installed
+- ✅ Creates a virtual environment (`venv` folder)
+- ✅ Installs all required packages (FastAPI, LangChain, Google AI, etc.)
+- ✅ Creates necessary folders (`private_documents`, `chroma_db`)
+- ✅ Sets up configuration files
 
-- Check Python and Ollama installation
-- Create virtual environment
-- Install all dependencies
-- Create necessary directories
-- Set up environment configuration
+**Wait for:** "Setup complete!" message (takes 3-5 minutes)
 
-#### 5. Verify Setup
+### Step 5: Configure Your API Key 🔐
+
+Create your environment file:
 
 ```bash
+# Copy the example file
+copy .env.example .env
+```
+
+Open `.env` in Notepad and add your API key:
+
+```env
+# Required: Your Google API Key
+GOOGLE_API_KEY=AIzaSyB1234...your_actual_key_here
+
+# Model Configuration (using fastest model)
+GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+
+# Optional APIs (can leave empty)
+SERPER_API_KEY=
+KANOON_API_KEY=
+```
+
+**Important:** Replace `AIzaSyB1234...` with your actual API key from Step 2.
+
+### Step 6: Verify Everything Works ✔️
+
+```bash
+# Activate the virtual environment
+venv\Scripts\activate
+
+# Run verification
 python verify_setup.py
 ```
 
-All checks should show ✓ (green checkmarks).
+**Expected output:**
+```
+✓ Python version: 3.11.x
+✓ Virtual environment: Active
+✓ Dependencies: Installed
+✓ Google API Key: Valid
+✓ Gemini Model: Accessible
+✓ Directories: Created
+✓ All checks passed!
+```
+
+If you see errors, check [Troubleshooting](#-troubleshooting).
 
 ---
 
-## 📖 Usage
+## 🎮 Running the Application
 
-### Method 1: Run via API (Recommended for Testing)
+You have 2 ways to use the simulator:
 
-#### Start the Server
+### Method 1: Quick Test (Command Line) - Fastest Way
+
+**Perfect for:** Testing, automation, quick checks
+
+#### Start the Backend Server:
 
 ```bash
-# Activate virtual environment
+# Activate environment (if not already active)
 venv\Scripts\activate
 
-# Start FastAPI server
+# Start the FastAPI server
 python app.py
 ```
 
-Wait for:
-
+**Wait for this message:**
 ```
 INFO:     Uvicorn running on http://0.0.0.0:8000
+All agents initialized successfully
+Workflow graph compiled
 ```
 
-#### Test with Sample Case
+#### Run a Test Case:
 
-In a new terminal:
+Open a **new terminal** and run:
 
 ```bash
+# Test with the included sample case
 python test_api_demo.py
 ```
 
-This runs a pre-configured defamation case and streams the entire workflow.
-
-#### Or Test with Custom Case
+Or test with your own case file:
 
 ```bash
 python test_api_demo.py your_case_file.txt
 ```
 
-### Method 2: Run via Streamlit UI (Interactive)
+**What you'll see:**
+- Real-time streaming updates
+- Agent responses (Judge, Lawyer, Prosecutor)
+- Legal research findings
+- Final verdict
+- Complete in 3-5 minutes
 
-#### Start the Backend
+### Method 2: Web Interface (Interactive) - Best User Experience
+
+**Perfect for:** Visual interaction, presentations, learning
+
+#### Step 1 - Start Backend (Terminal 1):
 
 ```bash
-# Terminal 1
+venv\Scripts\activate
 python app.py
 ```
 
-#### Start the UI
+#### Step 2 - Start Web UI (Terminal 2):
 
 ```bash
-# Terminal 2
+venv\Scripts\activate
 streamlit run interface/stapp.py
 ```
 
-Browser opens automatically to `http://localhost:8501`
+**Browser opens automatically** to `http://localhost:8501`
 
-#### Use the Interface
+#### Step 3 - Use the Interface:
 
-1. **Upload Documents** - Add case files (PDF, TXT, DOCX)
-2. **Enter Case Details** - Describe the legal case
-3. **Start Simulation** - Click "Start Court Simulation"
-4. **Provide Feedback** - Interact when prompted
-5. **Review Verdict** - Read the final judgment
+1. **Upload Documents** (Optional)
+   - Click "Upload Case Documents"
+   - Add PDFs, Word docs, or text files
+   - These get added to the knowledge base
+
+2. **Enter Your Case**
+   - Describe your legal case in the text box
+   - Or paste case details
+
+3. **Start Simulation**
+   - Click "Start Court Simulation"
+   - Watch agents work in real-time
+
+4. **Provide Feedback**
+   - When prompted, you can add feedback
+   - Strengthens defense arguments
+
+5. **Review Verdict**
+   - Read the final judgment
+   - See legal reasoning
+   - Download report (optional)
+
+---
+
+## 📝 Using Your Own Cases
+
+### Sample Case Included
+
+The project includes `sample_case.txt` - a defamation and cyber harassment case:
+
+**Case:** State vs. Rohan Malhotra  
+**Charges:** Defamation (IPC 499) + IT Act violations  
+**Scenario:** Accused claims social media account was hacked
+
+**To run it:**
+```bash
+python test_api_demo.py sample_case.txt
+```
+
+### Creating Your Own Case File
+
+Create a text file (e.g., `my_case.txt`) following this template:
+
+```text
+Case File
+
+Case Title: [Your Case Name - e.g., "State vs. John Doe"]
+
+Case Summary:
+[Detailed description of what happened. Include:
+- Who is involved (accused, victim, witnesses)
+- What allegedly happened (the incident)
+- When it happened (dates)
+- Where it happened (location)
+- Why it's a legal issue (laws violated)]
+
+Case Details:
+1. Date of Incident: [e.g., January 15, 2024]
+2. Location: [e.g., Mumbai, Maharashtra]
+3. Nature of Offense: [e.g., Theft under IPC Section 378]
+4. Evidence Available: [e.g., CCTV footage, witness statements]
+5. Parties Involved:
+   - Accused: [Name, age, occupation]
+   - Victim: [Name, age, occupation]
+
+Defense Position:
+1. [Main defense argument - e.g., "Accused has alibi"]
+2. [Supporting point - e.g., "Witness testimony confirms location"]
+3. [Additional defense - e.g., "No motive for the crime"]
+4. [Evidence for defense - e.g., "Phone records show different location"]
+
+Prosecution Claims:
+1. [Main prosecution argument]
+2. [Evidence against accused]
+3. [Witness statements]
+
+Request:
+[What you want analyzed - e.g., "Provide defense strategy for this 
+theft case under IPC Section 378, considering the alibi defense"]
+```
+
+### Tips for Better Results:
+
+✅ **Be Specific** - More details = better analysis  
+✅ **Include Evidence** - Mention what proof exists  
+✅ **Cite Laws** - If you know relevant IPC sections, mention them  
+✅ **Clear Timeline** - Dates and sequence of events help  
+✅ **Both Sides** - Include prosecution and defense viewpoints
+
+### Adding Supporting Documents:
+
+1. Place documents in `private_documents/` folder:
+   - PDFs (case files, evidence photos)
+   - Word documents (witness statements)
+   - Text files (legal research)
+
+2. The system automatically processes them when you run
+
+### Example Case Types You Can Test:
+
+- **Criminal Cases** - Theft, assault, defamation, fraud
+- **Cyber Crimes** - Hacking, online harassment, identity theft
+- **Property Disputes** - Land disputes, trespassing
+- **Contract Issues** - Breach of contract, fraud
+- **Family Law** - Custody, domestic violence
+
+---
+
+## 🤖 Understanding the Agents
+
+### 1. Judge Agent 👨‍⚖️
+
+**Role:** Master of Ceremonies, Decision Maker
+
+**What it does:**
+- Controls the entire trial flow
+- Decides which agent speaks next
+- Requests evidence verification
+- Ensures fair proceedings
+- Delivers final verdict with legal reasoning
+
+**When it acts:**
+- After prosecutor presents case
+- When verifying legal claims
+- Before final verdict
+- To request additional research
+
+### 2. Defense Lawyer Agent 🛡️
+
+**Role:** Your Advocate, Defender
+
+**What it does:**
+- Builds arguments in your favor
+- Finds weaknesses in prosecution's case
+- Cites relevant laws and precedents
+- Prepares cross-examination questions
+- Proposes defenses (alibi, self-defense, etc.)
+
+**When it acts:**
+- After prosecution's arguments
+- When user provides feedback
+- To present counterarguments
+- During final arguments
+
+### 3. Prosecutor Agent ⚔️
+
+**Role:** State's Representative, Accuser
+
+**What it does:**
+- Builds the case against the accused
+- Finds evidence of wrongdoing
+- Cites laws that were violated
+- Challenges defense arguments
+- Presents aggravating factors
+
+**When it acts:**
+- Early in the workflow (sets the stage)
+- After legal research is done
+- To rebut defense arguments
+- During closing arguments
+
+### 4. Legal Retriever Agent 📚
+
+**Role:** Law Library, Legal Researcher
+
+**What it does:**
+- Searches Indian Penal Code (IPC) documents
+- Finds relevant sections and laws
+- Retrieves legal definitions
+- Provides legal precedents from database
+- Uses RAG (Retrieval-Augmented Generation)
+
+**What it searches:**
+- Public documents in `public_documents/`
+- IPC sections, legal provisions
+- Constitutional articles
+- Your uploaded documents in `private_documents/`
+
+**When it acts:**
+- When judge requests verification
+- When lawyers need legal backing
+- To clarify legal definitions
+
+### 5. Kanoon Fetcher Agent 🔍
+
+**Role:** Case Law Researcher, Precedent Finder
+
+**What it does:**
+- Searches Indian Kanoon database
+- Finds similar past court cases
+- Extracts relevant keywords from your case
+- Retrieves judgments and precedents
+- Provides citation for legal arguments
+
+**When it acts:**
+- At the beginning (analyzes your case)
+- To find supporting precedents
+- When similar case law needed
+
+**Note:** Requires KANOON_API_KEY (optional)
+
+### 6. Web Searcher Agent 🌐
+
+**Role:** Internet Researcher, Current Info Finder
+
+**What it does:**
+- Searches the internet for legal information
+- Finds recent judgments not in database
+- Looks up legal experts' opinions
+- Searches for case updates
+- Provides current legal trends
+
+**When it acts:**
+- When local database lacks info
+- For recent legal developments
+- To verify facts
+- When asked by other agents
+
+**Note:** Requires SERPER_API_KEY (optional)
+
+### How They Work Together:
+
+```
+1. User submits case
+2. Kanoon Fetcher extracts keywords, finds similar cases
+3. Prosecutor builds charges
+4. Judge reviews, requests Legal Retriever for laws
+5. Legal Retriever fetches IPC sections
+6. Defense Lawyer builds counter-arguments
+7. User provides feedback (optional)
+8. [Cycle repeats 5-10 times with different angles]
+9. Judge delivers final verdict
+```
+
+---
+
+## ⚙️ Configuration Options
+
+### Environment Variables (.env file)
+
+```env
+# ============================================
+# REQUIRED CONFIGURATION
+# ============================================
+
+# Your Google AI API Key (REQUIRED)
+GOOGLE_API_KEY=your_google_api_key_here
+
+# ============================================
+# MODEL CONFIGURATION
+# ============================================
+
+# Gemini Model (Choose based on needs)
+GEMINI_MODEL=gemini-2.5-flash-lite
+
+# Available models:
+# - gemini-2.5-flash-lite  (Fastest, cheapest, recommended)
+# - gemini-1.5-flash       (Fast, good quality)
+# - gemini-1.5-pro         (Best quality, slower, costlier)
+# - gemini-2.0-flash-exp   (Experimental, very fast)
+
+# Embedding Model (for document search)
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+
+# ============================================
+# OPTIONAL EXTERNAL APIS
+# ============================================
+
+# Serper API for web search (optional)
+# Get free key: https://serper.dev/
+SERPER_API_KEY=
+
+# Indian Kanoon API for case law (optional)
+KANOON_API_KEY=
+
+# ============================================
+# PERFORMANCE TUNING (Advanced)
+# ============================================
+
+# Temperature (creativity vs accuracy)
+# Lower = more focused, Higher = more creative
+# Default: 0.7 (balanced)
+TEMPERATURE=0.7
+
+# Max tokens per response
+# Default: 2048
+MAX_TOKENS=2048
+```
+
+### Choosing the Right Model:
+
+| Model | Speed | Quality | Cost | Best For |
+|-------|-------|---------|------|----------|
+| gemini-2.5-flash-lite | ⚡⚡⚡ Fastest | ⭐⭐⭐ Good | 💰 Cheapest | Testing, demos |
+| gemini-1.5-flash | ⚡⚡ Fast | ⭐⭐⭐⭐ Better | 💰💰 Low | Production use |
+| gemini-1.5-pro | ⚡ Slower | ⭐⭐⭐⭐⭐ Best | 💰💰💰 Higher | Complex cases |
+| gemini-2.0-flash-exp | ⚡⚡⚡ Very Fast | ⭐⭐⭐⭐ Excellent | 💰 Low | Experimental |
+
+**Recommendation:** Start with `gemini-2.5-flash-lite` for best speed/cost ratio.
+
+### Switching Models:
+
+1. Open `.env` file
+2. Change `GEMINI_MODEL=gemini-2.5-flash-lite` to your choice
+3. Save file
+4. Restart `python app.py`
+
+No code changes needed!
+
+---
+
+## 🐛 Troubleshooting
+
+### Common Issues & Solutions
+
+#### ❌ Error: "GOOGLE_API_KEY not found"
+
+**Problem:** The .env file is missing or API key not set
+
+**Solution:**
+```bash
+# Create .env file from template
+copy .env.example .env
+
+# Open in Notepad and add your key
+notepad .env
+
+# Add this line:
+GOOGLE_API_KEY=your_actual_api_key_here
+```
+
+#### ❌ Error: "Invalid API key" or "API key not valid"
+
+**Problem:** Wrong or expired API key
+
+**Solution:**
+1. Go to [Google AI Studio](https://aistudio.google.com/app/apikey)
+2. Check if key is active
+3. Create new key if needed
+4. Copy ENTIRE key (no spaces)
+5. Update .env file
+6. Restart app
+
+#### ❌ Error: "Rate limit exceeded"
+
+**Problem:** Too many requests (free tier limit: 15/minute)
+
+**Solution:**
+- Wait 60 seconds and try again
+- Reduce workflow complexity
+- Upgrade to paid tier for higher limits
+- Check if multiple instances are running
+
+#### ❌ Error: "ModuleNotFoundError: No module named 'langchain'"
+
+**Problem:** Dependencies not installed
+
+**Solution:**
+```bash
+# Make sure virtual environment is active
+venv\Scripts\activate
+
+# Reinstall all dependencies
+pip install -r requirements.txt --force-reinstall
+
+# Verify
+python verify_setup.py
+```
+
+#### ❌ Error: "Port 8000 already in use"
+
+**Problem:** Another process using port 8000
+
+**Solution:**
+```bash
+# Find the process
+netstat -ano | findstr :8000
+
+# Kill it (use PID from above)
+taskkill /F /PID <process_id>
+
+# Or use different port
+uvicorn app:app --host 0.0.0.0 --port 8001
+```
+
+#### ❌ ChromaDB is very slow on first run
+
+**Problem:** Generating embeddings for all documents
+
+**Solution:**
+- This is normal on FIRST run only
+- Wait for progress to complete (can take 5-10 minutes)
+- Subsequent runs use cached embeddings (instant)
+- Watch console for progress messages
+
+#### ❌ Error: "Internet connection required"
+
+**Problem:** No internet access
+
+**Solution:**
+- Gemini is cloud-based, REQUIRES internet
+- Check your connection
+- Check firewall/proxy settings
+- Try with VPN if blocked
+
+#### ❌ Agents giving poor quality responses
+
+**Problem:** Wrong model or settings
+
+**Solution:**
+1. Switch to better model:
+   ```env
+   GEMINI_MODEL=gemini-1.5-flash
+   ```
+2. Provide more detailed case description
+3. Add supporting documents to `private_documents/`
+4. Try running case again
+
+#### ❌ Error: "Python was not found"
+
+**Problem:** Python not installed or not in PATH
+
+**Solution:**
+1. Download Python from [python.org](https://www.python.org/downloads/)
+2. During installation, CHECK "Add Python to PATH"
+3. Restart terminal
+4. Verify: `python --version`
+
+### Getting More Help:
+
+**1. Run Diagnostics:**
+```bash
+python verify_setup.py
+```
+
+**2. Check Logs:**
+- Look at terminal output for detailed errors
+- Check FastAPI logs in the terminal running `app.py`
+
+**3. Common Log Messages:**
+
+✅ **Good signs:**
+```
+INFO: Uvicorn running on http://0.0.0.0:8000
+Primary LLM initialized successfully
+All agents initialized successfully
+Workflow graph compiled
+```
+
+❌ **Problem signs:**
+```
+ERROR: Failed to initialize Gemini LLM
+WARNING: Low VRAM
+CRITICAL: API key missing
+```
 
 ---
 
 ## 📁 Project Structure
 
 ```
-├── app.py                      # Main FastAPI application
-├── requirements.txt            # Python dependencies
-├── setup.bat                   # Automated setup script
-├── verify_setup.py            # Setup verification tool
-├── test_api_demo.py           # API testing script
-├── sample_case.txt            # Example legal case
-├── .env.example               # Environment template
+Law_Courtroom_Simulator/
 │
-├── core/
-│   ├── chroma_store.py        # Vector database (ChromaDB)
-│   ├── workflow.py            # LangGraph workflow orchestration
-│   └── state.py               # Agent state management
+├── 📄 app.py                      # Main FastAPI backend server
+├── 📄 requirements.txt            # Python dependencies list
+├── 📄 setup.bat                   # Automated setup script (Windows)
+├── 📄 verify_setup.py            # Verification tool
+├── 📄 test_api_demo.py           # API testing script
+├── 📄 sample_case.txt            # Example legal case
+├── 📄 .env.example               # Environment template
+├── 📄 .env                       # Your config (YOU create this)
+├── 📄 README.md                  # This file
 │
-├── agents/
-│   ├── judge.py               # Judge agent
-│   ├── lawyer.py              # Defense lawyer agent
-│   ├── prosecutor.py          # Prosecutor agent
-│   ├── retriever.py           # Legal document retriever
-│   ├── kanoon_fetcher.py      # Indian Kanoon API integration
-│   └── web_search.py          # Web search agent
+├── 📁 venv/                      # Virtual environment (created by setup.bat)
+│   └── ... (Python packages)
 │
-├── interface/
-│   └── stapp.py               # Streamlit UI
+├── 📁 core/                      # Core system components
+│   ├── chroma_store.py          # Vector database (ChromaDB + Gemini embeddings)
+│   ├── workflow.py              # LangGraph workflow orchestration
+│   └── state.py                 # Agent state management
 │
-├── private_documents/         # User case files (gitignored)
-├── public_documents/          # Legal references (IPC, precedents)
-└── chroma_db/                # Vector database storage (gitignored)
+├── 📁 agents/                    # AI agent implementations
+│   ├── __init__.py              # Agent exports
+│   ├── base.py                  # Base agent class
+│   ├── judge.py                 # Judge agent
+│   ├── lawyer.py                # Defense lawyer agent
+│   ├── prosecutor.py            # Prosecutor agent
+│   ├── retriever.py             # Legal document retriever
+│   ├── kanoon_fetcher.py        # Indian Kanoon integration
+│   └── web_search.py            # Web search agent
+│
+├── 📁 interface/                 # User interfaces
+│   └── stapp.py                 # Streamlit web UI
+│
+├── 📁 private_documents/         # Your case files (gitignored)
+│   └── [Your PDFs, docs, etc.]
+│
+├── 📁 public_documents/          # Legal reference documents
+│   └── [IPC sections, laws, precedents]
+│
+├── 📁 chroma_db/                # Vector database storage (gitignored)
+│   └── [Embeddings cache]
+│
+└── 📁 _archive/                 # Old documentation (you can ignore)
+    └── [Previous docs]
 ```
+
+### Key Files Explained:
+
+**You interact with:**
+- `app.py` - Start this to run the backend
+- `test_api_demo.py` - Run this to test cases
+- `.env` - Your configuration (API keys)
+- `sample_case.txt` - Example to learn from
+- `private_documents/` - Put your documents here
+
+**System uses:**
+- `core/` - The brain (workflow, state, storage)
+- `agents/` - The actors (judge, lawyer, etc.)
+- `chroma_db/` - The memory (cached documents)
+
+**Setup uses:**
+- `setup.bat` - Installs everything
+- `verify_setup.py` - Checks if working
+- `requirements.txt` - List of packages needed
 
 ---
 
-## 🎓 How to Use with Your Own Cases
+## 🔌 API Reference
 
-### 1. Prepare Your Case File
+### FastAPI Endpoint
 
-Create a text file (e.g., `my_case.txt`) with this structure:
+**Base URL:** `http://localhost:8000`
 
-```text
-Case File
+#### POST `/stream_workflow`
 
-Case Title: [Your Case Title]
+Streams the trial workflow in real-time.
 
-Case Summary:
-[Detailed description of the case, including parties involved,
-allegations, date, location, and circumstances]
-
-Case Details:
-1. Date of Incident: [Date]
-2. Location: [Place]
-3. Nature of Offense: [Description]
-4. Evidence Available: [List of evidence]
-
-Defense Position:
-1. [Your first defense argument]
-2. [Your second defense argument]
-3. [Additional points]
-
-Prosecution Claims:
-1. [Prosecution's main argument]
-2. [Additional prosecution points]
-
-Request:
-[What you want the system to analyze - e.g., "Provide defense
-strategy for this case under IPC Section XXX"]
+**Request:**
+```json
+{
+  "user_prompt": "Your case description here..."
+}
 ```
 
-### 2. Add Supporting Documents
+**Response:** Server-Sent Events (SSE) stream
 
-Place any supporting documents in `private_documents/`:
+**Event Format:**
+```json
+{
+  "status": "agent_name",
+  "message": "Agent response...",
+  "next_agent": "next_agent_name",
+  "iteration": 1,
+  "completed": false
+}
+```
 
-- PDFs, Word documents, or text files
-- Case evidence, witness statements, etc.
+**Example (Python):**
+```python
+import requests
 
-### 3. Run the Simulation
+url = "http://localhost:8000/stream_workflow"
+data = {"user_prompt": "Your case here"}
 
+response = requests.post(url, json=data, stream=True)
+
+for line in response.iter_lines():
+    if line:
+        print(line.decode('utf-8'))
+```
+
+**Example (cURL):**
 ```bash
+curl -X POST http://localhost:8000/stream_workflow \
+  -H "Content-Type: application/json" \
+  -d '{"user_prompt":"Your case"}'
+```
+
+### Using test_api_demo.py
+
+**Simplest way:**
+```bash
+python test_api_demo.py
+```
+
+**With custom file:**
+```python
+# test_api_demo.py usage
 python test_api_demo.py my_case.txt
 ```
 
-Or use the Streamlit UI to upload and interact visually.
+**What it does:**
+- Reads case from file
+- Sends to API
+- Streams responses in real-time
+- Displays formatted output
+- Shows final verdict
 
 ---
 
-## 📋 Sample Case Included
+## 💰 Cost & Performance
 
-The repository includes `sample_case.txt` - a defamation and cyber harassment case:
+### Google Gemini 2.5 Flash Lite Pricing
 
-**Case:** State vs. Rohan Malhotra  
-**Charges:** Defamation (IPC 499) + Cyber Harassment (IT Act 2000)  
-**Defense:** Account hacking/unauthorized access
+**Current Rates (Check [Google AI Pricing](https://ai.google.dev/pricing)):**
 
-Run it:
+- **Input tokens:** ~$0.04 per 1M tokens
+- **Output tokens:** ~$0.15 per 1M tokens
 
-```bash
-python test_api_demo.py sample_case.txt
-```
+**Typical Usage:**
 
----
+| Scenario | Tokens Used | Estimated Cost |
+|----------|-------------|----------------|
+| Single simple case | ~30K tokens | ~$0.01 |
+| Single complex case | ~80K tokens | ~$0.02 |
+| 10 cases per day | ~500K tokens | ~$0.10 |
+| 100 cases per month | ~3M tokens | ~$0.60 |
 
-## 🔧 Configuration
+### Free Tier Limits:
 
-### Environment Variables
+✅ **15 requests per minute**  
+✅ **1 million tokens per day**  
+✅ **Free forever** for personal/educational use
 
-Copy `.env.example` to `.env` and configure:
+**Perfect for:**
+- Learning and experimentation
+- Personal legal research
+- Student projects
+- Prototyping
+- Small-scale use (< 50 cases/day)
 
-```env
-# Ollama Configuration (Local LLM)
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL_MAIN=qwen2:7b-instruct-q4_K_M
-OLLAMA_MODEL_ADVANCED=phi3:mini
-OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+### Performance Benchmarks:
 
-# Optional External APIs
-SERPER_API_KEY=your_key_here          # For web search (optional)
-KANOON_API_KEY=your_key_here          # For Indian Kanoon (optional)
-```
+**With Gemini 2.5 Flash Lite:**
 
-**Note:** External API keys are optional. The system works fully without them.
+| Metric | Time |
+|--------|------|
+| First run (with embedding) | 5-8 minutes |
+| Document indexing | 1-3 minutes (once) |
+| Workflow execution | 2-4 minutes |
+| Subsequent runs | 2-3 minutes |
+| Single agent response | 5-15 seconds |
 
-### Customize Models
+**System Requirements:**
 
-Edit `.env` to use different Ollama models (ensure they fit your VRAM):
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| OS | Windows 10 | Windows 11 |
+| CPU | 4 cores | 8+ cores |
+| RAM | 8 GB | 16 GB |
+| Storage | 5 GB free | 10 GB+ free |
+| Internet | Required | Broadband |
+| GPU | NOT needed | NOT needed |
 
-```env
-# For higher VRAM GPUs (8GB+)
-OLLAMA_MODEL_MAIN=qwen2:7b-instruct    # Full precision version
-OLLAMA_MODEL_ADVANCED=llama3.1:8b      # Alternative model
+### Comparison with Local Models:
 
-# For even faster performance on 6GB VRAM
-OLLAMA_MODEL_MAIN=phi3:mini            # Ultra-fast (2.3GB)
-OLLAMA_MODEL_ADVANCED=gemma:2b         # Tiny but capable (1.4GB)
-```
-
-Available models: [ollama.com/library](https://ollama.com/library)
-
----
-
-## 🏛️ System Architecture
-
-### Agent Workflow
-
-```
-User Input
-    ↓
-┌─────────────────────────────────────┐
-│ Kanoon Fetcher                      │
-│ Extracts keywords & fetches cases   │
-└─────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────┐
-│ Prosecutor                          │
-│ Builds prosecution case             │
-└─────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────┐
-│ Judge                               │
-│ Reviews & requests verification     │
-└─────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────┐
-│ Retriever                           │
-│ Fetches relevant IPC sections       │
-└─────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────┐
-│ Lawyer                              │
-│ Prepares defense arguments          │
-└─────────────────────────────────────┘
-    ↓
-┌─────────────────────────────────────┐
-│ User Feedback                       │
-│ Review & strengthen arguments       │
-└─────────────────────────────────────┘
-    ↓
-[Cycle repeats 5-10 times]
-    ↓
-┌─────────────────────────────────────┐
-│ Judge Final Verdict                 │
-│ Delivers judgment with reasoning    │
-└─────────────────────────────────────┘
-```
-
-### Technology Stack
-
-- **LLM Framework:** LangChain + LangGraph
-- **Vector Database:** ChromaDB
-- **Local LLM:** Ollama (llama3.1, mistral)
-- **Embeddings:** nomic-embed-text
-- **API Framework:** FastAPI
-- **UI Framework:** Streamlit
-- **Document Processing:** PyMuPDF, python-docx
-
----
-
-## ⏱️ Performance & Timing
-
-### First Run (Cold Start)
-
-- **Document Indexing:** 2-5 minutes
-- **Model Loading:** 1-2 minutes
-- **First Workflow:** 15-30 minutes
-
-### Subsequent Runs (Warm Start)
-
-- **Model Loading:** < 30 seconds
-- **Workflow Execution:** 10-20 minutes
-
-### Factors Affecting Speed
-
-- **CPU/GPU:** Faster hardware = faster inference
-- **Model Size:** Smaller models (7-8B) faster than large (70B)
-- **Document Count:** More documents = longer indexing
-- **Case Complexity:** Complex cases need more iterations
-
----
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-#### 1. "ModuleNotFoundError"
-
-```bash
-# Reinstall dependencies
-pip install -r requirements.txt --force-reinstall
-```
-
-#### 2. "Ollama not running"
-
-```bash
-# Start Ollama
-ollama serve
-
-# Verify it's running
-curl http://localhost:11434
-```
-
-#### 3. "Model not found"
-
-```bash
-# Check installed models
-ollama list
-
-# Pull missing model
-ollama pull llama3.1:8b
-```
-
-#### 4. "Port 8000 already in use"
-
-```bash
-# Find and kill the process
-netstat -ano | findstr :8000
-taskkill /F /PID <process_id>
-```
-
-#### 5. "ChromaDB initialization slow"
-
-- **Normal on first run** - Generating embeddings takes time
-- Watch the progress bar - it shows real-time status
-- For 96 chunks (typical): 2-4 minutes
-
-#### 6. "No verdict given"
-
-- Workflows need 8-10 argument rounds minimum
-- Continue providing feedback when prompted
-- Be patient - complex cases take longer
-
-### Get More Help
-
-1. Run diagnostics: `python verify_setup.py`
-2. Check console logs for detailed errors
-3. Ensure Ollama models are loaded: `ollama list`
-
----
-
-## 📊 System Requirements
-
-### Minimum
-
-- **OS:** Windows 10 (64-bit)
-- **CPU:** 4 cores
-- **RAM:** 8 GB
-- **Storage:** 15 GB free
-- **Internet:** Required for initial setup only
-
-### Recommended
-
-- **OS:** Windows 11 (64-bit)
-- **CPU:** 8+ cores
-- **RAM:** 16 GB
-- **GPU:** NVIDIA GPU with 8GB+ VRAM (optional, for faster inference)
-- **Storage:** 20 GB+ free
-
-### Notes
-
-- **GPU acceleration** is automatic if NVIDIA GPU detected
-- **CPU-only mode** works but slower
-- **First run** requires internet for downloading models
+| Metric | Local (Ollama) | Cloud (Gemini) |
+|--------|----------------|----------------|
+| Setup Time | 30+ minutes | 5 minutes |
+| Workflow Time | 40+ minutes | 2-4 minutes |
+| GPU Required | Yes (6GB+ VRAM) | No |
+| Cost | Free | ~$0.01/case |
+| Consistency | Variable | Reliable |
+| Internet | Optional | Required |
 
 ---
 
 ## 🔒 Privacy & Security
 
-- ✅ **All processing happens locally** - No data sent to external servers
-- ✅ **No API keys required** - Fully functional without external APIs
-- ✅ **Your documents stay private** - Never leave your machine
-- ✅ **Open source** - Inspect the code yourself
+### Data Handling:
 
-Optional external APIs (if configured):
+⚠️ **Important:** Your data is sent to Google Cloud for processing
 
-- **Serper API** - Web search only
-- **Kanoon API** - Legal case database access only
+**What Google receives:**
+- Your case descriptions
+- Legal queries
+- Document contents (when uploaded)
+
+**Google's promises:**
+- Data encrypted in transit (HTTPS)
+- Not used to train public models
+- Not shared with third parties
+- Processed and discarded per API terms
+
+**Read:** [Google AI Privacy Policy](https://ai.google.dev/gemini-api/terms)
+
+### Your Data Locally:
+
+✅ **ChromaDB** - Embeddings stored encrypted on your machine  
+✅ **Documents** - Stay in `private_documents/` (not uploaded unless queried)  
+✅ **Logs** - Only stored locally
+
+### Best Practices:
+
+- ✅ Use test data for learning
+- ✅ Anonymize real cases before testing
+- ⚠️ Don't submit confidential attorney-client information
+- ✅ Clear `chroma_db/` periodically to remove cached data
 
 ---
 
-## 📦 Dependencies
+## 🤝 Contributing
 
-Main packages (see `requirements.txt` for full list):
+Contributions welcome! Please:
 
-- `langchain` - LLM framework
-- `langgraph` - Workflow orchestration
-- `chromadb` - Vector database
-- `ollama` - Local LLM client
-- `fastapi` - REST API
-- `streamlit` - Web UI
-- `pymupdf` - PDF processing
-- `python-docx` - Word document processing
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Make changes
+4. Test thoroughly
+5. Commit (`git commit -m 'Add amazing feature'`)
+6. Push (`git push origin feature/amazing-feature`)
+7. Open Pull Request
 
 ---
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+## 🙏 Acknowledgments
+
+- **Google Gemini API** - Fast, reliable AI inference
+- **LangChain** - Excellent LLM framework
+- **LangGraph** - Powerful workflow orchestration
+- **ChromaDB** - Efficient vector storage
+- **FastAPI** - Modern API framework
+- **Streamlit** - Beautiful web UI
+- Legal community for domain expertise
+
+---
+
+## 📞 Support & Help
+
+### Need Help?
+
+1. **Read this README** thoroughly
+2. **Run diagnostics:** `python verify_setup.py`
+3. **Check troubleshooting** section above
+4. **Review logs** in terminal
+5. **Open GitHub issue** with:
+   - Error message
+   - Steps to reproduce
+   - Output of `verify_setup.py`
+
+### Quick Links:
+
+- 🌐 [Google AI Studio](https://aistudio.google.com/)
+- 📖 [Gemini API Docs](https://ai.google.dev/docs)
+- 💰 [Pricing](https://ai.google.dev/pricing)
+- 🔐 [Privacy Policy](https://ai.google.dev/gemini-api/terms)
+
+---
+
+## 🎉 Ready to Start?
+
+```bash
+# 1. Activate environment
+venv\Scripts\activate
+
+# 2. Start backend
+python app.py
+
+# 3. Test it (new terminal)
+python test_api_demo.py
+```
+
+**Expected:** Fast responses, professional legal analysis, verdict in 2-4 minutes! ⚖️
+
+---
+
+**Made with ❤️ for legal professionals, students, and AI enthusiasts**
+
+

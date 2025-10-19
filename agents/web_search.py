@@ -1,11 +1,46 @@
 from .Internet_data_retriever.internet_data import DataRetrievalCrew
 from .base import AgentState
 from langchain_core.messages import HumanMessage
+from crewai import LLM
+import os
 
 class WebSearcherAgent:
     def __init__(self, llm):
         self.data_retriever_crew = DataRetrievalCrew
-        self.llm = llm
+        # Convert LangChain LLM to CrewAI LLM format
+        # CrewAI uses LiteLLM which needs the provider prefix
+        self.llm = self._convert_to_crewai_llm(llm)
+
+    def _convert_to_crewai_llm(self, langchain_llm):
+        """Convert LangChain LLM to CrewAI LLM format"""
+        try:
+            # Get the model name from LangChain LLM
+            model_name = getattr(langchain_llm, 'model_name', None) or getattr(langchain_llm, 'model', 'gemini-1.5-flash')
+            
+            # Remove 'models/' prefix if present (Gemini API format)
+            if model_name.startswith('models/'):
+                model_name = model_name.replace('models/', '')
+            
+            # Get API key from environment
+            api_key = os.getenv("GOOGLE_API_KEY")
+            
+            # Create CrewAI LLM with proper format for Gemini
+            # LiteLLM expects format: gemini/<model-name>
+            crewai_llm = LLM(
+                model=f"gemini/{model_name}",
+                api_key=api_key,
+                temperature=0.7
+            )
+            
+            return crewai_llm
+        except Exception as e:
+            print(f"Warning: Could not convert LLM, using default: {e}")
+            # Fallback to a working configuration
+            return LLM(
+                model="gemini/gemini-1.5-flash",
+                api_key=os.getenv("GOOGLE_API_KEY"),
+                temperature=0.7
+            )
 
     async def process(self, state: AgentState) -> AgentState:
         result = await self.data_retriever_crew(state["messages"][-1].content, llm=self.llm).run()

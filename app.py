@@ -1,55 +1,73 @@
 from core.workflow import TrialWorkflow
 from agents import LawyerAgent, ProsecutorAgent, JudgeAgent, RetrieverAgent, FetchingAgent, WebSearcherAgent
 import asyncio
-from langchain_community.llms import Ollama
-from langchain_community.chat_models import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 from fastapi import FastAPI, Body
 from fastapi.responses import StreamingResponse
 import json
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize FastAPI app
 app = FastAPI()
 
-# Initialize Ollama LLMs (Windows-compatible, free, local)
-# Using ChatOllama for chat-based interactions
-ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+# Initialize Google Gemini LLMs (Cloud-based, fast, cost-effective)
+# Get API key from environment
+google_api_key = os.getenv("GOOGLE_API_KEY")
+if not google_api_key:
+    raise ValueError("GOOGLE_API_KEY not found in environment variables. Please set it in .env file")
 
-# Primary LLM for general use (Optimized for RTX 4050 6GB VRAM)
-llm_0 = ChatOllama(
-    model=os.getenv("OLLAMA_MODEL_MAIN", "qwen2:7b-instruct-q4_K_M"),
-    base_url=ollama_base_url,
-    temperature=0.7
-)
+gemini_model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
-# Multiple LLM options for fallback redundancy
+print("="*80)
+print("GOOGLE GEMINI LLM INITIALIZATION")
+print("="*80)
+print(f"Model: {gemini_model}")
+print(f"API Key: {'*' * 20}{google_api_key[-4:] if len(google_api_key) > 4 else '****'}")
+print("Cloud-based inference - No local GPU required")
+print("Expected performance: <5 minutes per workflow (10x faster than local)")
+print("="*80)
+
+# Primary LLM for general use
+try:
+    llm_0 = ChatGoogleGenerativeAI(
+        model=gemini_model,
+        google_api_key=google_api_key,
+        temperature=0.7,
+        convert_system_to_human=True  # Important for Gemini compatibility
+    )
+    print("Primary LLM initialized successfully")
+except Exception as e:
+    print(f"ERROR: Failed to initialize Gemini LLM: {e}")
+    raise
+
+# Multiple LLM instances for different agents (using same model for consistency)
+# Note: Gemini is highly reliable, so we use same model with retry logic instead of fallbacks
 llms = [
-    ChatOllama(
-        model=os.getenv("OLLAMA_MODEL_MAIN", "qwen2:7b-instruct-q4_K_M"),
-        base_url=ollama_base_url,
-        temperature=0.7
+    ChatGoogleGenerativeAI(
+        model=gemini_model,
+        google_api_key=google_api_key,
+        temperature=0.7,
+        convert_system_to_human=True
     ),
-    ChatOllama(
-        model=os.getenv("OLLAMA_MODEL_ADVANCED", "phi3:mini"),
-        base_url=ollama_base_url,
-        temperature=0.7
+    ChatGoogleGenerativeAI(
+        model=gemini_model,
+        google_api_key=google_api_key,
+        temperature=0.8,
+        convert_system_to_human=True
     ),
-    ChatOllama(
-        model="qwen2:7b-instruct-q4_K_M",
-        base_url=ollama_base_url,
-        temperature=0.8
+    ChatGoogleGenerativeAI(
+        model=gemini_model,
+        google_api_key=google_api_key,
+        temperature=0.6,
+        convert_system_to_human=True
     ),
 ]
 
-print("="*80)
-print("OLLAMA LLM INITIALIZATION")
-print("="*80)
-print(f"Ollama Base URL: {ollama_base_url}")
-print(f"Primary Model: {os.getenv('OLLAMA_MODEL_MAIN', 'qwen2:7b-instruct-q4_K_M')}")
-print(f"Advanced Model: {os.getenv('OLLAMA_MODEL_ADVANCED', 'phi3:mini')}")
-print("Optimized for RTX 4050 (6GB VRAM) - 5-10x faster performance")
-print("Primary LLM initialized successfully")
-print(f"Fallback LLM count: {len(llms)}")
+print(f"Fallback LLM instances created: {len(llms)}")
 print("="*80)
 
 # Initialize Workflow

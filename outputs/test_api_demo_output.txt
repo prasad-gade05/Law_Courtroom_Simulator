@@ -1,0 +1,186 @@
+CLIENT] Starting API Demo...
+
+================================================================================
+PathRAG Court Simulator - API Demo
+================================================================================
+
+Case Summary:
+--------------------------------------------------------------------------------
+Defendant: Rohan Malhotra (28, Entrepreneur)
+Charges: Defamation (IPC 499) + Cyber Harassment (IT Act 2000)
+Defense: Account hacking/compromise
+--------------------------------------------------------------------------------
+
+[CLIENT] Sending case to API...
+[CLIENT] Endpoint: http://localhost:8000/stream_workflow
+[CLIENT] Payload size: 1686 bytes
+[CLIENT] Timeout: 1800 seconds (30 minutes)
+
+[CLIENT] Establishing connection...
+[CLIENT] Connection established in 2.08s
+[CLIENT] Streaming workflow responses...
+[NOTE] First agent (Kanoon Fetcher) may take 3-5 minutes (external API)
+
+================================================================================
+WORKFLOW EXECUTION:
+================================================================================
+
+
+[Event #1] Time: 2.1s (delta: 0.0s)
+  Status: progress
+  Content: Workflow initialized, starting execution...
+
+[Event #2] Time: 10.4s (delta: 8.3s)
+  Status: progress
+  Agent: kanoon_fetcher
+  Info: Iteration 1, Next: prosecutor
+
+[Event #3] Time: 16.0s (delta: 5.6s)
+  Status: progress
+  Agent: prosecutor
+  Info: Iteration 2, Next: self
+
+[Event #4] Time: 18.2s (delta: 2.2s)
+  Status: progress
+  Agent: prosecutor
+  Info: Iteration 3, Next: retriever
+
+[Event #5] Time: 38.6s (delta: 20.3s)
+  Status: progress
+  Agent: retriever
+  Info: Iteration 4, Next: prosecutor
+
+[Event #6] Time: 39.9s (delta: 1.3s)
+  Status: progress
+  Agent: prosecutor
+  Info: Iteration 5, Next: self
+
+[Event #7] Time: 44.7s (delta: 4.8s)
+  Status: progress
+  Agent: prosecutor
+  Info: Iteration 6, Next: judge
+
+[Event #8] Time: 48.3s (delta: 3.6s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 7, Next: self
+
+[Event #9] Time: 51.1s (delta: 2.8s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 8, Next: retriever
+
+[Event #10] Time: 70.9s (delta: 19.8s)
+  Status: progress
+  Agent: retriever
+  Info: Iteration 9, Next: judge
+
+[Event #11] Time: 72.1s (delta: 1.2s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 10, Next: web_searcher
+
+[Event #12] Time: 96.0s (delta: 23.8s)
+  Status: progress
+  Agent: web_searcher
+  Info: Iteration 11, Next: judge
+
+[Event #13] Time: 100.5s (delta: 4.6s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 12, Next: self
+
+[Event #14] Time: 106.3s (delta: 5.7s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 13, Next: self
+
+[Event #15] Time: 109.8s (delta: 3.5s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 14, Next: lawyer
+
+[Event #16] Time: 116.7s (delta: 6.9s)
+  Status: progress
+  Agent: lawyer
+  Info: Iteration 15, Next: self
+
+[Event #17] Time: 120.1s (delta: 3.4s)
+  Status: progress
+  Agent: lawyer
+  Info: Iteration 16, Next: retriever
+
+[Event #18] Time: 140.3s (delta: 20.2s)
+  Status: progress
+  Agent: retriever
+  Info: Iteration 17, Next: lawyer
+
+[Event #19] Time: 147.8s (delta: 7.5s)
+  Status: progress
+  Agent: lawyer
+  Info: Iteration 18, Next: web_searcher
+
+[Event #20] Time: 351.4s (delta: 203.6s)
+  Status: progress
+  Agent: web_searcher
+  Info: Iteration 19, Next: lawyer
+
+[Event #21] Time: 369.3s (delta: 17.9s)
+  Status: progress
+  Agent: lawyer
+  Info: Iteration 20, Next: user_feedback
+
+[Event #22] Time: 380.5s (delta: 11.2s)
+  Status: progress
+  Agent: lawyer
+  Info: Iteration 21, Post-feedback
+
+[Event #23] Time: 390.7s (delta: 10.2s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 22, Post-feedback
+
+[Event #24] Time: 399.7s (delta: 9.1s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 23, Post-feedback
+
+[Event #25] Time: 429.2s (delta: 29.5s)
+  Status: progress
+  Agent: retriever
+  Info: Iteration 24, Post-feedback
+
+[Event #26] Time: 435.0s (delta: 5.8s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 25, Post-feedback
+
+[Event #27] Time: 606.6s (delta: 171.5s)
+  Status: progress
+  Agent: web_searcher
+  Info: Iteration 26, Post-feedback
+
+[Event #28] Time: 688.2s (delta: 81.6s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 27, Post-feedback
+
+[Event #29] Time: 695.0s (delta: 6.8s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 28, Post-feedback
+
+[Event #30] Time: 710.1s (delta: 15.1s)
+  Status: progress
+  Agent: judge
+  Info: Iteration 29, Post-feedback
+
+[Event #31] Time: 716.6s (delta: 6.5s)
+  Status: progress
+  Agent: lawyer
+  Info: Iteration 30, Post-feedback
+
+[Event #32] Time: 823.4s (delta: 106.9s)
+  Status: progress
+  Agent: lawyer
+  Info: Iteration 31, Post-feedback

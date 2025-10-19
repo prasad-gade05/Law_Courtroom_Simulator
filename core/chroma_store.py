@@ -1,37 +1,49 @@
 """
-ChromaDB Vector Store - Windows-compatible replacement for Pathway
+ChromaDB Vector Store - Cloud-ready with Google Gemini embeddings
 """
 import chromadb
 from chromadb.config import Settings
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import OllamaEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pathlib import Path
 import time
 from typing import Optional
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class ChromaVectorStore:
     """
-    Vector store using ChromaDB with Ollama embeddings.
-    Windows-native replacement for PathwayVectorStore.
+    Vector store using ChromaDB with Google Gemini embeddings.
+    Cloud-based embeddings for better performance and no local GPU requirement.
     
     Parameters:
         name: Name for the database collection (e.g., 'public', 'private')
         path: Path to directory containing documents to index
-        embedding_model: Ollama embedding model name (default: 'nomic-embed-text')
+        embedding_model: Google embedding model name (default: 'models/text-embedding-004')
     """
     
     def __init__(
         self, 
         name: str, 
         path: str,
-        embedding_model: str = "nomic-embed-text",
+        embedding_model: str = None,
         persist_directory: Optional[str] = None
     ):
         self.name = name
         self.path = path
+        
+        # Get embedding model from env or use default
+        if embedding_model is None:
+            embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
         self.embedding_model = embedding_model
+        
+        # Ensure model name doesn't have models/ prefix (LiteLLM compatibility)
+        if self.embedding_model.startswith("models/"):
+            self.embedding_model = self.embedding_model.replace("models/", "")
         
         # Set persistence directory
         if persist_directory is None:
@@ -50,11 +62,18 @@ class ChromaVectorStore:
         print()
         
         try:
-            # Initialize Ollama embeddings
-            print(f"Initializing Ollama embeddings...", end='', flush=True)
-            self.embeddings = OllamaEmbeddings(
-                model=self.embedding_model,
-                base_url="http://localhost:11434"
+            # Initialize Google Gemini embeddings
+            print(f"Initializing Google Gemini embeddings...", end='', flush=True)
+            google_api_key = os.getenv("GOOGLE_API_KEY")
+            if not google_api_key:
+                raise ValueError("GOOGLE_API_KEY not found in environment variables")
+            
+            # GoogleGenerativeAIEmbeddings expects models/ prefix
+            embedding_model_with_prefix = f"models/{self.embedding_model}" if not self.embedding_model.startswith("models/") else self.embedding_model
+            
+            self.embeddings = GoogleGenerativeAIEmbeddings(
+                model=embedding_model_with_prefix,
+                google_api_key=google_api_key
             )
             print(" [OK]")
             
@@ -181,7 +200,8 @@ class ChromaVectorStore:
         if all_texts:
             print("\n" + "=" * 60)
             print(f"Generating embeddings and indexing {len(all_texts)} chunks...")
-            print(f"   This may take a few minutes for the first run...")
+            print(f"   Using Google Gemini API (cloud-based)")
+            print(f"   This may take a few minutes...")
             print(f"   Progress: ", end='', flush=True)
             
             # Index in batches to show progress
