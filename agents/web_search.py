@@ -43,11 +43,25 @@ class WebSearcherAgent:
             )
 
     async def process(self, state: AgentState) -> AgentState:
+        # Check web search limit (max 2 searches per workflow)
+        current_count = state.get("web_search_count", 0)
+        if current_count >= 2:
+            print(f"[WEB SEARCH] Limit reached ({current_count}/2), skipping search")
+            return {
+                "messages": [HumanMessage(content="Web search limit reached. Using existing information.", name="web_searcher")],
+                "next": state["caller"],
+                "thought_step": state["thought_step"],
+                "caller": "web_searcher",
+                "web_search_count": current_count  # Keep count
+            }
+        
+        print(f"[WEB SEARCH] Executing search ({current_count + 1}/2)")
         result = await self.data_retriever_crew(state["messages"][-1].content, llm=self.llm).run()
      
         return {
             "messages": [HumanMessage(content=result.raw, name="web_searcher")],
             "next": state["caller"],
             "thought_step": state["thought_step"],
-            "caller": "web_searcher"
+            "caller": "web_searcher",
+            "web_search_count": current_count + 1  # Increment count
         }

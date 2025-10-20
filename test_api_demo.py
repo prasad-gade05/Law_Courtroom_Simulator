@@ -1,10 +1,13 @@
 """
 API Demo Script - PathRAG Court Simulator
 Tests the workflow endpoint with a sample case
+Enhanced with clear argument display and formatted output
 """
 import requests
 import json
 import sys
+import textwrap
+from datetime import datetime
 
 # Sample case for testing
 SAMPLE_CASE = """Case File
@@ -44,8 +47,74 @@ Please analyze this case from a defense perspective and provide strong legal arg
 considering IPC Section 499 (Defamation) and IT Act 2000 provisions.
 """
 
+def format_agent_output(agent_name: str, content, iteration: int):
+    """Format agent output with visual clarity and proper wrapping"""
+    
+    # Handle case where content might be a list or other type
+    if isinstance(content, list):
+        # If it's a list, join the elements
+        content = ' '.join(str(item) for item in content)
+    elif not isinstance(content, str):
+        # Convert to string if it's not already
+        content = str(content)
+    
+    # Agent-specific symbols and colors
+    symbols = {
+        "judge": "⚖️ ",
+        "lawyer": "🛡️ ",
+        "prosecutor": "⚔️ ",
+        "retriever": "📚",
+        "kanoon_fetcher": "🔍",
+        "web_searcher": "🌐"
+    }
+    
+    symbol = symbols.get(agent_name, "•")
+    
+    # Check for verdict (now safe since content is a string)
+    is_verdict = "Given Verdict" in content or "VERDICT" in content.upper()
+    
+    print("\n" + "=" * 80)
+    if is_verdict:
+        print(f"🏛️  FINAL VERDICT - {agent_name.upper()} - Iteration {iteration} 🏛️")
+    else:
+        print(f"{symbol} {agent_name.upper()} - Iteration {iteration}")
+    print("=" * 80)
+    
+    # Wrap and display content
+    if content and len(content.strip()) > 0:
+        # Split into paragraphs
+        paragraphs = content.split('\n\n')
+        for para in paragraphs:
+            if para.strip():
+                # Wrap each paragraph to 78 characters
+                wrapped = textwrap.fill(para.strip(), width=78)
+                print(wrapped)
+                print()  # Add spacing between paragraphs
+    else:
+        print("(No content to display)")
+    
+    print("-" * 80)
+
+
+def print_verdict_summary(verdict_content: str):
+    """Print highlighted final verdict"""
+    print("\n" + "=" * 80)
+    print("🏛️  FINAL COURT VERDICT  🏛️")
+    print("=" * 80)
+    
+    # Wrap verdict text
+    wrapped = textwrap.fill(verdict_content, width=78)
+    print(wrapped)
+    
+    print("=" * 80 + "\n")
+
+
+def format_progress_message(iteration: int, agent_name: str, next_agent: str, elapsed: float):
+    """Format compact progress message"""
+    return f"[Iter {iteration:2d}] {agent_name:15s} → {next_agent:15s} ({elapsed:6.1f}s)"
+
 def test_api():
-    """Test the workflow API endpoint"""
+    """Test the workflow API endpoint with enhanced output display"""
     
     # API endpoint
     url = "http://localhost:8000/stream_workflow"
@@ -55,7 +124,7 @@ def test_api():
         "user_prompt": SAMPLE_CASE
     }
     
-    print("=" * 80)
+    print("\n" + "=" * 80)
     print("PathRAG Court Simulator - API Demo")
     print("=" * 80)
     print("\nCase Summary:")
@@ -68,6 +137,7 @@ def test_api():
     print("\n[CLIENT] Sending case to API...")
     print(f"[CLIENT] Endpoint: {url}")
     print(f"[CLIENT] Payload size: {len(json.dumps(payload))} bytes")
+    print(f"[CLIENT] Maximum iterations: 28")
     print(f"[CLIENT] Timeout: 1800 seconds (30 minutes)")
     
     try:
@@ -86,14 +156,15 @@ def test_api():
         connection_time = time.time() - request_start
         print(f"[CLIENT] Connection established in {connection_time:.2f}s")
         print("[CLIENT] Streaming workflow responses...")
-        print("[NOTE] First agent (Kanoon Fetcher) may take 3-5 minutes (external API)")
+        print("[NOTE] First agent (Kanoon Fetcher) may take 3-5 minutes")
         print("\n" + "=" * 80)
-        print("WORKFLOW EXECUTION:")
+        print("COURTROOM SIMULATION BEGINS")
         print("=" * 80 + "\n")
         
         event_count = 0
-        last_update = ""
         last_event_time = time.time()
+        displayed_agents = set()  # Track which agents we've displayed
+        final_verdict = None
         
         # Stream responses
         for line in response.iter_lines():
@@ -114,33 +185,47 @@ def test_api():
                         data = json.loads(line_text[6:])
                         
                         status = data.get('status', 'unknown')
-                        content = str(data.get('content', ''))
-                        extra_data = data.get('data', '')
+                        agent_name = data.get('agent_name', 'unknown')
+                        iteration = data.get('iteration', event_count)
+                        next_agent = data.get('next_agent', 'unknown')
+                        agent_message = data.get('agent_message', '')
                         
-                        # Show compact progress
-                        print(f"\n[Event #{event_count}] Time: {elapsed:.1f}s (delta: {time_since_last:.1f}s)")
-                        print(f"  Status: {status}")
+                        # Handle agent_message being a list or other types
+                        if isinstance(agent_message, list):
+                            agent_message = ' '.join(str(item) for item in agent_message)
+                        elif not isinstance(agent_message, str):
+                            agent_message = str(agent_message) if agent_message else ''
                         
-                        if status == "progress":
-                            # Extract agent name if present
-                            if "Agent '" in content:
-                                agent_name = content.split("'")[1] if "'" in content else "unknown"
-                                print(f"  Agent: {agent_name}")
-                                if extra_data:
-                                    print(f"  Info: {extra_data}")
+                        # Display agent arguments (main feature!)
+                        if status == "progress" and agent_message and len(agent_message.strip()) > 0:
+                            # Show ALL main courtroom actors (judge, lawyer, prosecutor)
+                            if agent_name in ['judge', 'lawyer', 'prosecutor']:
+                                format_agent_output(agent_name, agent_message, iteration)
+                                displayed_agents.add(agent_name)
+                                
+                                # DEBUG: Log lawyer visibility
+                                if agent_name == 'lawyer':
+                                    print(f"\n[DEBUG] Lawyer message displayed at iteration {iteration}")
+                                    print(f"[DEBUG] Message length: {len(agent_message)} characters")
                             else:
-                                if content != last_update:
-                                    print(f"  Content: {content[:150]}")
-                                    last_update = content
-                        else:
-                            # Display full content for non-progress events
-                            if len(content) > 200:
-                                print(f"  Content: {content[:200]}...")
-                            else:
-                                print(f"  Content: {content}")
+                                # Show compact progress for support agents
+                                print(format_progress_message(iteration, agent_name, next_agent, elapsed))
+                        elif status == "progress":
+                            # Show compact progress if no message content
+                            print(format_progress_message(iteration, agent_name, next_agent, elapsed))
+                            
+                            # DEBUG: Check if lawyer had empty content
+                            if agent_name == 'lawyer':
+                                print(f"\n[DEBUG WARNING] Lawyer at iteration {iteration} had empty/no message!")
+                                print(f"[DEBUG] agent_message value: '{agent_message}'")
                         
                         # Check if workflow is complete
                         if status == "done":
+                            # Display final verdict if available
+                            if agent_message and "verdict" in agent_message.lower():
+                                final_verdict = agent_message
+                                print_verdict_summary(final_verdict)
+                            
                             print("\n" + "=" * 80)
                             print("WORKFLOW COMPLETE")
                             print("=" * 80)
@@ -150,6 +235,7 @@ def test_api():
                             print("\n" + "=" * 80)
                             print("WORKFLOW ERROR")
                             print("=" * 80)
+                            print(f"Error: {data.get('content', 'Unknown error')}")
                             break
                         
                         last_event_time = current_time
@@ -157,11 +243,15 @@ def test_api():
                     except json.JSONDecodeError as e:
                         print(f"[WARNING] Could not parse JSON: {e}")
                         print(f"Raw line: {line_text[:200]}")
+                    except Exception as e:
+                        print(f"[WARNING] Error processing event: {e}")
+                        print(f"Event data: {line_text[:200]}")
         
         total_time = time.time() - request_start
         print(f"\n[SUMMARY]")
-        print(f"  Total events received: {event_count}")
+        print(f"  Total iterations: {event_count}")
         print(f"  Total time: {total_time:.1f}s ({total_time/60:.1f} minutes)")
+        print(f"  Agents displayed: {', '.join(sorted(displayed_agents))}")
         print("\n[CLIENT] Demo completed successfully!")
         
     except requests.exceptions.ConnectionError:

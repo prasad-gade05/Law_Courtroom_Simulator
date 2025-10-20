@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional, Literal, TypedDict
 from langchain_core.messages import HumanMessage
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
-from agents.base import AgentState
+from agents.base import AgentState, safe_get_content
 import re
 
 # class JudgeDecision(BaseModel):
@@ -54,11 +54,18 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
             "1. Listen to the arguments presented by both the lawyer and prosecutor. Note their key points and claims. Identify potential hallucinations or logical errors or factual errors in latest argument.",
             "2. Determine the specific legal data (e.g., laws, IPCs, legal case precedents) required for cross verificaton of identified errors. Clearly ask the law retriever agent for the necessary legal data.",
             "3. Evaluate if additional web-based information is needed. If yes, ask the web searcher agent with specific details. If not, reply only with the keyword 'none.'",
-            "4. Assess the current state of the case, only analyze if it is ready for a verdict DO NOT give verdict yet. Atleast 10 arguments should be present before verdict.",
-            """5. Provide constructive feedback or comments, pointing out logical flaws, factual inconsistencies, or unsupported claims in the arguments if present based on retrieverd data. 
-            From previous thought step, only if trail is ready for verdict, ask for final statements from both lawyer and prosecutor., if already asked for final statements, summarize the case and deliver verdict with keyphrase "Given Verdict".
+            """4. Assess the current state of the case. Check if ready for verdict: 
+            - If iteration >= 22 OR 8+ arguments present from both sides, trial is ready for final statements.
+            - If iteration >= 24, MUST proceed to verdict preparation immediately.
+            DO NOT give verdict yet, only assess readiness.""",
+            """5. Provide constructive feedback or comments, pointing out logical flaws, factual inconsistencies, or unsupported claims in the arguments if present based on retrieved data. 
+            From previous thought step:
+            - If trial is ready AND iteration >= 22, request final statements from both lawyer and prosecutor (one at a time).
+            - If iteration >= 24, skip requesting more statements and proceed to verdict.
+            - If iteration >= 26, IMMEDIATELY deliver verdict with keyphrase "Given Verdict" - DO NOT delay further.
+            - If final statements already received OR iteration >= 24, summarize the case and deliver verdict with keyphrase "Given Verdict".
             Write the response as live dialogue (avoid bullet points), Maintain an impartial tone.""",
-            "6.Determine next speaker, respond with only one of the keywords 'lawyer' or 'prosecutor' or 'END' if verdict is given in previous response" 
+            "6. Determine next speaker: respond with only one of the keywords 'lawyer' or 'prosecutor' or 'retriever' or 'web_searcher' or 'END' if verdict is given in previous response. If iteration >= 26, MUST choose 'END'." 
         ]
 
     async def process(self, state: AgentState) -> AgentState:
@@ -73,10 +80,18 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
             
         """
         
+        # Safety check: Ensure thought_step is within bounds
+        thought_steps = self.get_thought_steps()
+        current_step = state.get("thought_step", 0)
+        
+        if current_step >= len(thought_steps):
+            print(f"[WARNING] Judge thought_step {current_step} out of range (max {len(thought_steps)-1}), resetting to 0")
+            current_step = 0
+        
         # Prepare messages for LLM processing
         messages = [
             {"role": "system", "content": self.system_prompt}
-        ] + state["messages"] + [{"role": "system", "content": f"current_task: {self.get_thought_steps()[state['thought_step']]}" }]
+        ] + state["messages"] + [{"role": "system", "content": f"current_task: {thought_steps[current_step]}" }]
         # print(messages)
         # Process through LLMs with fallback mechanism
         # if state["thought_step"] != 4:
@@ -100,10 +115,13 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
         #             continue
             # result = self.llm.with_structured_output(JudgeDecision).invoke(messages)
         
+        # Safely extract content from result
+        result_content = safe_get_content(result)
+        
         if state["thought_step"] == 0 or state["thought_step"] == 3 or state["thought_step"] == 4:
             # Initial review or post-web search steps
             response = {
-                "messages": [HumanMessage(content=result.content, name="judge")],
+                "messages": [HumanMessage(content=result_content, name="judge")],
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
                 "caller": "judge"
@@ -111,7 +129,7 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
         elif state["thought_step"] == 1:
             # Legal data retrieval step
             response = {
-                "messages": [HumanMessage(content=result.content, name="judge") ],
+                "messages": [HumanMessage(content=result_content, name="judge") ],
                 "next": "retriever",
                 "thought_step": 2,
                 "caller": "judge"
@@ -119,16 +137,16 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
         elif state["thought_step"] == 2:
             # Web search decision step
             response = {
-                "messages": [HumanMessage(content=result.content, name="judge") ],
-                "next": self.is_web_search_needed(result.content),
+                "messages": [HumanMessage(content=result_content, name="judge") ],
+                "next": self.is_web_search_needed(result_content),
                 "thought_step": 3,
                 "caller": "judge"
             }
         elif state["thought_step"] == 5:
             # Final decision step
             response = {
-                "messages": [HumanMessage(content=f"next speaker: {result.content}", name="judge")],
-                "next": self.next_speaker(result.content),
+                "messages": [HumanMessage(content=f"next speaker: {result_content}", name="judge")],
+                "next": self.next_speaker(result_content),
                 "thought_step": 0,
                 "caller": "judge"
             }

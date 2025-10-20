@@ -17,9 +17,12 @@ Law Courtroom Simulator is a virtual courtroom where AI agents simulate a real l
 ✅ **6 AI Agents** - Judge, Defense Lawyer, Prosecutor, Legal Researcher, Case Finder, Web Searcher  
 ✅ **Cloud-Powered** - Google Gemini 2.5 Flash Lite (fastest model)  
 ✅ **No GPU Needed** - Runs entirely in the cloud  
-✅ **Under 5 Minutes** - Complete legal simulations fast  
+✅ **Fast Verdict** - Maximum 28 iterations, 5-8 minutes  
 ✅ **Smart Research** - Automatically finds relevant laws and cases  
-✅ **Two Interfaces** - Web UI (Streamlit) + REST API
+✅ **Two Interfaces** - Web UI (Streamlit) + REST API  
+✅ **✨ NEW: Clear Output** - See all arguments in terminal with formatting  
+✅ **✨ NEW: Guaranteed Verdict** - Multi-stage forced verdict ensures completion
+✅ **✨ NEW: Debug Mode** - Track lawyer visibility and argument flow
 
 ## 📋 Table of Contents
 
@@ -214,10 +217,43 @@ python test_api_demo.py your_case_file.txt
 
 **What you'll see:**
 - Real-time streaming updates
-- Agent responses (Judge, Lawyer, Prosecutor)
+- **✨ NEW: Actual agent arguments displayed in terminal**
+- **Judge's reasoning and comments (⚖️)**
+- **Lawyer's defense arguments (🛡️)**
+- **Prosecutor's charges and evidence (⚔️)**
 - Legal research findings
-- Final verdict
-- Complete in 3-5 minutes
+- Final verdict clearly highlighted
+- Complete in 5-8 minutes (max 28 iterations)
+
+**Enhanced Output Features (v2.1):**
+```
+⚖️  JUDGE - Iteration 15
+================================================================================
+The prosecutor has presented a strong case highlighting the verified account 
+usage and timing coinciding with the business dispute. However, the defense's 
+claim of account compromise requires verification...
+--------------------------------------------------------------------------------
+
+🛡️  LAWYER - Iteration 16
+================================================================================
+Your Honor, I present digital forensics evidence showing unauthorized access 
+from foreign IP addresses. The login patterns clearly deviate from my client's 
+typical usage, establishing reasonable doubt about intent...
+--------------------------------------------------------------------------------
+
+⚔️  PROSECUTOR - Iteration 17
+================================================================================
+The defense's unauthorized access claim lacks substantiation. The account 
+security settings show no breach alerts, and the posts demonstrate intimate 
+knowledge of the business dispute only accessible to the defendant...
+--------------------------------------------------------------------------------
+
+⚖️  JUDGE - Iteration 26 🏛️ FINAL VERDICT 🏛️
+================================================================================
+Given Verdict: After careful consideration of all arguments and evidence 
+presented, the court finds...
+================================================================================
+```
 
 ### Method 2: Web Interface (Interactive) - Best User Experience
 
@@ -875,15 +911,28 @@ python test_api_demo.py my_case.txt
 
 ### Performance Benchmarks:
 
-**With Gemini 2.5 Flash Lite:**
+**With Gemini 2.5 Flash Lite (Optimized v2.1):**
 
-| Metric | Time |
-|--------|------|
-| First run (with embedding) | 5-8 minutes |
-| Document indexing | 1-3 minutes (once) |
-| Workflow execution | 2-4 minutes |
-| Subsequent runs | 2-3 minutes |
-| Single agent response | 5-15 seconds |
+| Metric | Time | Notes |
+|--------|------|-------|
+| First run (with embedding) | 5-8 minutes | Initial document indexing |
+| Workflow execution | 5-8 minutes | **Maximum 28 iterations** |
+| Simple cases | 5-7 minutes | Straightforward legal issues |
+| Complex cases | 7-8 minutes | Multiple legal angles |
+| Single agent response | 5-15 seconds | Per iteration |
+| Maximum iterations | 28 | **Guaranteed verdict delivery** |
+| Web searches allowed | 2 | Per workflow (optimized) |
+
+**Key Optimizations (v2.1 - Latest):**
+- ✅ Verdict delivered within 28 iterations maximum
+- ✅ Multi-stage forced verdict (iterations 24, 26)
+- ✅ Improved judge decision logic for faster verdicts
+- ✅ Web search limited to 2 per workflow
+- ✅ Optimized agent thought processes
+- ✅ No duplicate iterations in output
+- ✅ Clear visibility of all arguments (Judge, Lawyer, Prosecutor)
+- ✅ Debug logging for lawyer visibility
+- ✅ Complete workflow guaranteed
 
 **System Requirements:**
 

@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional, Literal, TypedDict
 from langchain_core.messages import HumanMessage
 from langchain.tools import BaseTool
-from .base import AgentState
+from .base import AgentState, safe_get_content
 import re
 
 
@@ -42,17 +42,24 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
             "1. Go through the case files and current state of the courtroom. Plan a strategy to make a strong argument in favor of the user.",
             "2. Identify the specific information needed to support the argument (e.g., laws, IPCs, precedents). Clearly ask the law retriever agent for this information.",
             "3. Assess if additional information from the web is required. If yes, ask the web searcher agent with specific details. If not, reply only with the keyword 'none.'",
-            "4. Construct a coherent and persuasive argument based on data received and the planned strategy. Write the response as live dialogue (avoid bullet points), and ensure it is fact-based and free from hallucinations.",
-            "5. Refine your argument based on feedback from the user input. if any new points include them to the argument carefully. Correct any inconsistencies or errors pointed out and strengthen your position."
-
+            "4. Construct a coherent and persuasive argument based on data received and the planned strategy. Write the response as live dialogue (avoid bullet points), and ensure it is fact-based and free from hallucinations. Be concise and impactful.",
+            "5. Review user feedback and refine your argument accordingly. Strengthen weak points, address concerns, and ensure the argument is compelling. Present the refined argument as live dialogue."
         ]
 
     async def process(self, state: AgentState) -> AgentState:
         """Process current state with lawyer-specific logic"""
         
+        # Safety check: Ensure thought_step is within bounds
+        thought_steps = self.get_thought_steps()
+        current_step = state.get("thought_step", 0)
+        
+        if current_step >= len(thought_steps):
+            print(f"[WARNING] Lawyer thought_step {current_step} out of range (max {len(thought_steps)-1}), resetting to 0")
+            current_step = 0
+        
         messages = [
-            {"role": "system", "content": self.system_prompt + "\n'current_task': " + self.get_thought_steps()[state["thought_step"]]}
-        ] + state["messages"] 
+            {"role": "system", "content": self.system_prompt + "\n'current_task': " + thought_steps[current_step]}
+        ] + state["messages"]
 
         for i,llm in enumerate(self.llms):
             try:
@@ -64,37 +71,40 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
 
         # result = self.llm.invoke(messages)
         
+        # Safely extract content from result
+        result_content = safe_get_content(result)
+        
         if state["thought_step"] == 0:
             response = {
-                "messages": [HumanMessage(content=result.content, name="lawyer")],
+                "messages": [HumanMessage(content=result_content, name="lawyer")],
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
                 "caller": "lawyer"
             }
         elif state["thought_step"] == 1:
             response = {
-                "messages": [HumanMessage(content=result.content, name="lawyer")],
+                "messages": [HumanMessage(content=result_content, name="lawyer")],
                 "next": "retriever",
                 "thought_step": 2,
                 "caller": "lawyer"
             }
         elif state["thought_step"] == 2:
             response = {
-                "messages": [HumanMessage(content=result.content, name="lawyer")],
-                "next": self.is_web_search_needed(result.content),
+                "messages": [HumanMessage(content=result_content, name="lawyer")],
+                "next": self.is_web_search_needed(result_content),
                 "thought_step": 3,
                 "caller": "lawyer"
             }
         elif state["thought_step"] == 3:
             response = {
-                "messages": [HumanMessage(content=result.content, name="lawyer")],
+                "messages": [HumanMessage(content=result_content, name="lawyer")],
                 "next": "user_feedback",
                 "thought_step": 4,
                 "caller": "lawyer"
             }
         elif state["thought_step"] == 4:
             response = {
-                "messages": [HumanMessage(content=result.content, name="lawyer")],
+                "messages": [HumanMessage(content=result_content, name="lawyer")],
                 "next": "judge",
                 "thought_step": 0,
                 "caller": "lawyer"

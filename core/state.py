@@ -9,3 +9,5 @@ class AgentState(MessagesState):
     next: str  # Where to route to next
     thought_step: Optional[int] = 0  # Current step in chain of thought
     caller: Optional[str] = None  # Who called the agent
+    iteration_count: Optional[int] = 0  # Total workflow iterations (NEW)
+    web_search_count: Optional[int] = 0  # Count of web searches used (NEW)

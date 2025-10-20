@@ -4,7 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
 from core.chroma_store import ChromaVectorStore
-from .base import AgentState
+from .base import AgentState, safe_get_content
 from langchain_core.messages.utils import get_buffer_string
 import os
 from dotenv import load_dotenv
@@ -92,7 +92,9 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
             
         for i in range(1): # max 5 iterations
             #formulate query
-            messages.append({"role": "system", "content": "need_info: " + info_analysis.content + "\n" + "current_task: " + self.get_thought_steps()[1]})
+            # Use safe_get_content for info_analysis
+            info_analysis_content = safe_get_content(info_analysis)
+            messages.append({"role": "system", "content": "need_info: " + info_analysis_content + "\n" + "current_task: " + self.get_thought_steps()[1]})
             # queries = self.llm.with_structured_output(Queries).invoke(messages)
             for i,llm in enumerate(self.llms):
                 try:
@@ -103,8 +105,12 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
                     print(f"LLM {i} failed with error: {e}")
 
             #retrieve
-            private_retrieved_content = self.private_retriever.invoke(private_query.content) if private_query.content.lower() != 'none' else 'None'
-            public_retrieved_content = self.public_retriever.invoke(public_query.content) if public_query.content.lower() != 'none' else 'None'
+            # Use safe_get_content for queries
+            private_query_content = safe_get_content(private_query)
+            public_query_content = safe_get_content(public_query)
+            
+            private_retrieved_content = self.private_retriever.invoke(private_query_content) if private_query_content.lower() != 'none' else 'None'
+            public_retrieved_content = self.public_retriever.invoke(public_query_content) if public_query_content.lower() != 'none' else 'None'
 
             #assess
             messages.append({"role": "system", "content": "private_retrieved_content: " + str(private_retrieved_content) + "\npublic_retrieved_content: " + str(public_retrieved_content) + "\ncurrent_task: " + self.get_thought_steps()[2]})
@@ -118,7 +124,10 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
                     continue
 
             #continue
-            if not re.search(r"not_enough", assessment.content, re.IGNORECASE):
+            # Use safe_get_content helper
+            assessment_content = safe_get_content(assessment)
+            
+            if not re.search(r"not_enough", assessment_content, re.IGNORECASE):
                 break
 
                 
@@ -135,9 +144,11 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
                 continue
 
         
+        # Use safe_get_content helper
+        result_content = safe_get_content(result)
         
         response = {
-            "messages": [HumanMessage(content=result.content, name="retriever")],
+            "messages": [HumanMessage(content=result_content, name="retriever")],
             "next": state["caller"],
             "thought_step": state["thought_step"],
             "caller": "retriever"

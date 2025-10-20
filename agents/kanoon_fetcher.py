@@ -1,7 +1,7 @@
 import os
 import time
 from typing import Dict, Any, List, Optional
-from .base import AgentState
+from .base import AgentState, safe_get_content
 from .misc.filestorage import FileStorage
 from .misc.ik import IKApi
 import argparse
@@ -71,7 +71,9 @@ Provide the list of keywords in bullet point format.
             except Exception as e:
                 print(f"LLM {i} failed with error: {e}")
                 continue
-        return response.content
+        
+        # Use safe_get_content to extract response
+        return safe_get_content(response)
 
     def _parse_keywords(self, response: str) -> Dict[str, Any]:
         """Parse the response to extract keywords."""

@@ -200,6 +200,8 @@ class TrialWorkflow:
                 messages=[HumanMessage(content=user_prompt)],
                 next="kanoon_fetcher",
                 thought_step=0,
+                iteration_count=0,  # NEW: Initialize iteration counter
+                web_search_count=0,  # NEW: Initialize web search counter
             )
 
             print(f"Initial state created")
@@ -217,7 +219,8 @@ class TrialWorkflow:
             # Stream workflow states
             try:
                 iteration_count = 0
-                max_iterations = 50
+                max_iterations = 28  # INCREASED: From 25 to 28 to allow verdict delivery
+                yielded_events = set()  # NEW: Track yielded events to prevent duplicates
                 
                 print(f"\nStarting workflow stream (max {max_iterations} iterations)")
                 print("-"*80)
@@ -243,15 +246,45 @@ class TrialWorkflow:
                     if isinstance(node_output, dict):
                         next_node = node_output.get("next", "unknown")
                         message_count = len(node_output.get("messages", []))
+                        current_iteration = node_output.get("iteration_count", iteration_count)
                         print(f"  Next node: {next_node}")
                         print(f"  Messages in state: {message_count}")
+                        
+                        # Update state iteration count
+                        node_output["iteration_count"] = iteration_count
                     
-                    # Yield progress
-                    yield {
-                        "status": "progress",
-                        "content": f"Agent '{node_name}' completed",
-                        "data": f"Iteration {iteration_count}, Next: {next_node if isinstance(node_output, dict) else 'unknown'}"
-                    }
+                    # Extract agent message content for display
+                    agent_message = ""
+                    if isinstance(node_output, dict) and node_output.get("messages"):
+                        messages_list = node_output.get("messages", [])
+                        if messages_list and len(messages_list) > 0:
+                            latest_msg = messages_list[-1]
+                            # Extract content from the message object
+                            if hasattr(latest_msg, 'content'):
+                                agent_message = latest_msg.content
+                            elif isinstance(latest_msg, dict) and 'content' in latest_msg:
+                                agent_message = latest_msg['content']
+                            elif isinstance(latest_msg, str):
+                                agent_message = latest_msg
+                    
+                    # Ensure agent_message is a string
+                    if not isinstance(agent_message, str):
+                        agent_message = str(agent_message) if agent_message else ""
+                    
+                    # Create unique event key to prevent duplicates
+                    event_key = f"{iteration_count}_{node_name}_{next_node if isinstance(node_output, dict) else 'unknown'}"
+                    
+                    # Yield progress only if not duplicate
+                    if event_key not in yielded_events:
+                        yield {
+                            "status": "progress",
+                            "agent_name": node_name,
+                            "iteration": iteration_count,
+                            "next_agent": next_node if isinstance(node_output, dict) else "unknown",
+                            "agent_message": agent_message,  # NEW: Include actual message
+                            "content": f"Agent '{node_name}' completed"
+                        }
+                        yielded_events.add(event_key)
                     
                     iteration_time = time.time() - iteration_start
                     print(f"  Duration: {iteration_time:.2f}s")
@@ -259,10 +292,37 @@ class TrialWorkflow:
                     # Check for END condition
                     if isinstance(node_output, dict):
                         next_node = node_output.get("next")
+                        
+                        # IMPROVED FORCED VERDICT: Multi-stage approach
+                        if node_name == "judge":
+                            # Stage 1: At iteration 24, if not ready for verdict, force it
+                            if iteration_count >= 24 and next_node not in ["END", "self"]:
+                                print(f"\n[FORCED VERDICT - STAGE 1] Iteration {iteration_count}, redirecting to verdict")
+                                # Force judge back to self to process verdict
+                                next_node = "self"
+                                node_output["next"] = "self"
+                                node_output["thought_step"] = 4  # Skip to verdict preparation step
+                            
+                            # Stage 2: At iteration 26+, absolutely force END
+                            elif iteration_count >= 26 and next_node != "END":
+                                print(f"\n[FORCED VERDICT - STAGE 2] Iteration {iteration_count}, forcing immediate END")
+                                next_node = "END"
+                                node_output["next"] = "END"
+                        
                         if next_node == "END":
                             print(f"\n[WORKFLOW END] Reached END state at iteration {iteration_count}")
                             print(f"Total time: {time.time() - workflow_start_time:.1f}s")
-                            yield {"status": "done", "content": "Workflow completed with verdict"}
+                            
+                            # Extract final verdict message
+                            final_verdict = agent_message if agent_message else "Verdict delivered"
+                            
+                            yield {
+                                "status": "done",
+                                "agent_name": "judge",
+                                "iteration": iteration_count,
+                                "agent_message": final_verdict,
+                                "content": "Workflow completed with verdict"
+                            }
                             return
                         
                         # Check if we're at user_feedback (interrupt point)
@@ -298,23 +358,84 @@ class TrialWorkflow:
                                 
                                 print(f"  Node: {resume_node}")
                                 
+                                resume_next = "unknown"
                                 if isinstance(resume_output, dict):
                                     resume_next = resume_output.get("next", "unknown")
                                     print(f"  Next node: {resume_next}")
+                                    
+                                    # Update iteration count in state
+                                    resume_output["iteration_count"] = iteration_count
                                 
-                                yield {
-                                    "status": "progress",
-                                    "content": f"Agent '{resume_node}' completed",
-                                    "data": f"Iteration {iteration_count}, Post-feedback"
-                                }
+                                # Extract agent message
+                                resume_agent_message = ""
+                                if isinstance(resume_output, dict) and resume_output.get("messages"):
+                                    messages_list = resume_output.get("messages", [])
+                                    if messages_list and len(messages_list) > 0:
+                                        latest_msg = messages_list[-1]
+                                        # Extract content from the message object
+                                        if hasattr(latest_msg, 'content'):
+                                            resume_agent_message = latest_msg.content
+                                        elif isinstance(latest_msg, dict) and 'content' in latest_msg:
+                                            resume_agent_message = latest_msg['content']
+                                        elif isinstance(latest_msg, str):
+                                            resume_agent_message = latest_msg
+                                
+                                # Ensure it's a string
+                                if not isinstance(resume_agent_message, str):
+                                    resume_agent_message = str(resume_agent_message) if resume_agent_message else ""
+                                
+                                # Create unique event key
+                                resume_event_key = f"{iteration_count}_{resume_node}_{resume_next}"
+                                
+                                # Yield only if not duplicate
+                                if resume_event_key not in yielded_events:
+                                    yield {
+                                        "status": "progress",
+                                        "agent_name": resume_node,
+                                        "iteration": iteration_count,
+                                        "next_agent": resume_next,
+                                        "agent_message": resume_agent_message,
+                                        "content": f"Agent '{resume_node}' completed (post-feedback)"
+                                    }
+                                    yielded_events.add(resume_event_key)
                                 
                                 resume_time = time.time() - resume_start
                                 print(f"  Duration: {resume_time:.2f}s")
                                 
+                                
+                                # IMPROVED FORCED VERDICT in post-feedback loop
+                                if resume_node == "judge":
+                                    resume_next = resume_output.get("next") if isinstance(resume_output, dict) else "unknown"
+                                    
+                                    # Stage 1: At iteration 24+, redirect to verdict
+                                    if iteration_count >= 24 and resume_next not in ["END", "self"]:
+                                        print(f"\n[FORCED VERDICT] Iteration {iteration_count} in post-feedback, redirecting to verdict")
+                                        if isinstance(resume_output, dict):
+                                            resume_output["next"] = "self"
+                                            resume_output["thought_step"] = 4
+                                            resume_next = "self"
+                                    
+                                    # Stage 2: At iteration 26+, force END
+                                    elif iteration_count >= 26 and resume_next != "END":
+                                        print(f"\n[FORCED VERDICT] Iteration {iteration_count} reached in post-feedback, forcing END")
+                                        if isinstance(resume_output, dict):
+                                            resume_output["next"] = "END"
+                                            resume_next = "END"
+                                
                                 if isinstance(resume_output, dict) and resume_output.get("next") == "END":
                                     print(f"\n[WORKFLOW END] Reached END state at iteration {iteration_count}")
                                     print(f"Total time: {time.time() - workflow_start_time:.1f}s")
-                                    yield {"status": "done", "content": "Workflow completed with verdict"}
+                                    
+                                    # Extract final verdict
+                                    final_verdict_msg = resume_agent_message if resume_agent_message else "Verdict delivered"
+                                    
+                                    yield {
+                                        "status": "done",
+                                        "agent_name": "judge",
+                                        "iteration": iteration_count,
+                                        "agent_message": final_verdict_msg,
+                                        "content": "Workflow completed with verdict"
+                                    }
                                     return
                                 
                                 if iteration_count >= max_iterations:
