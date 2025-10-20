@@ -209,7 +209,7 @@ class TrialWorkflow:
             print(f"  Thought step: 0")
             print(f"  Message count: {len(initial_state['messages'])}")
 
-            thread = {"configurable": {"thread_id": "1"}}
+            thread = {"configurable": {"thread_id": "1", "recursion_limit": 30}}  # Increased recursion limit
 
             yield {
                 "status": "progress",
@@ -219,7 +219,7 @@ class TrialWorkflow:
             # Stream workflow states
             try:
                 iteration_count = 0
-                max_iterations = 28  # INCREASED: From 25 to 28 to allow verdict delivery
+                max_iterations = 25  # Set to 25 to match LangGraph's default limit
                 yielded_events = set()  # NEW: Track yielded events to prevent duplicates
                 
                 print(f"\nStarting workflow stream (max {max_iterations} iterations)")
@@ -271,6 +271,9 @@ class TrialWorkflow:
                     if not isinstance(agent_message, str):
                         agent_message = str(agent_message) if agent_message else ""
                     
+                    # Check for verdict in message content
+                    verdict_delivered = "VERDICT DELIVERED" in agent_message or "Given Verdict" in agent_message
+                    
                     # Create unique event key to prevent duplicates
                     event_key = f"{iteration_count}_{node_name}_{next_node if isinstance(node_output, dict) else 'unknown'}"
                     
@@ -289,25 +292,24 @@ class TrialWorkflow:
                     iteration_time = time.time() - iteration_start
                     print(f"  Duration: {iteration_time:.2f}s")
                     
-                    # Check for END condition
+                    # Check for END condition or verdict delivery
                     if isinstance(node_output, dict):
                         next_node = node_output.get("next")
                         
-                        # IMPROVED FORCED VERDICT: Multi-stage approach
-                        if node_name == "judge":
-                            # Stage 1: At iteration 24, if not ready for verdict, force it
-                            if iteration_count >= 24 and next_node not in ["END", "self"]:
-                                print(f"\n[FORCED VERDICT - STAGE 1] Iteration {iteration_count}, redirecting to verdict")
-                                # Force judge back to self to process verdict
-                                next_node = "self"
-                                node_output["next"] = "self"
-                                node_output["thought_step"] = 4  # Skip to verdict preparation step
-                            
-                            # Stage 2: At iteration 26+, absolutely force END
-                            elif iteration_count >= 26 and next_node != "END":
-                                print(f"\n[FORCED VERDICT - STAGE 2] Iteration {iteration_count}, forcing immediate END")
-                                next_node = "END"
-                                node_output["next"] = "END"
+                        # CRITICAL: Force END if verdict detected or iteration limit reached
+                        if verdict_delivered and node_name == "judge":
+                            print(f"\n[VERDICT DETECTED] Forcing END at iteration {iteration_count}")
+                            next_node = "END"
+                            node_output["next"] = "END"
+                        elif iteration_count >= 22 and node_name == "judge":
+                            print(f"\n[ITERATION LIMIT] Forcing verdict at iteration {iteration_count}")
+                            # Force judge to deliver verdict on next self-loop
+                            if next_node == "self":
+                                node_output["thought_step"] = 3  # Force to verdict step
+                        elif iteration_count >= 24:
+                            print(f"\n[HARD LIMIT] Forcing immediate END at iteration {iteration_count}")
+                            next_node = "END"
+                            node_output["next"] = "END"
                         
                         if next_node == "END":
                             print(f"\n[WORKFLOW END] Reached END state at iteration {iteration_count}")
@@ -384,6 +386,9 @@ class TrialWorkflow:
                                 if not isinstance(resume_agent_message, str):
                                     resume_agent_message = str(resume_agent_message) if resume_agent_message else ""
                                 
+                                # Check for verdict in message
+                                verdict_in_resume = "VERDICT DELIVERED" in resume_agent_message or "Given Verdict" in resume_agent_message
+                                
                                 # Create unique event key
                                 resume_event_key = f"{iteration_count}_{resume_node}_{resume_next}"
                                 
@@ -403,24 +408,20 @@ class TrialWorkflow:
                                 print(f"  Duration: {resume_time:.2f}s")
                                 
                                 
-                                # IMPROVED FORCED VERDICT in post-feedback loop
-                                if resume_node == "judge":
-                                    resume_next = resume_output.get("next") if isinstance(resume_output, dict) else "unknown"
-                                    
-                                    # Stage 1: At iteration 24+, redirect to verdict
-                                    if iteration_count >= 24 and resume_next not in ["END", "self"]:
-                                        print(f"\n[FORCED VERDICT] Iteration {iteration_count} in post-feedback, redirecting to verdict")
-                                        if isinstance(resume_output, dict):
-                                            resume_output["next"] = "self"
-                                            resume_output["thought_step"] = 4
-                                            resume_next = "self"
-                                    
-                                    # Stage 2: At iteration 26+, force END
-                                    elif iteration_count >= 26 and resume_next != "END":
-                                        print(f"\n[FORCED VERDICT] Iteration {iteration_count} reached in post-feedback, forcing END")
-                                        if isinstance(resume_output, dict):
-                                            resume_output["next"] = "END"
-                                            resume_next = "END"
+                                # Force END if verdict detected or iteration limit
+                                if resume_node == "judge" and isinstance(resume_output, dict):
+                                    if verdict_in_resume:
+                                        print(f"\n[VERDICT DETECTED] Forcing END at iteration {iteration_count}")
+                                        resume_next = "END"
+                                        resume_output["next"] = "END"
+                                    elif iteration_count >= 22:
+                                        print(f"\n[ITERATION LIMIT] Forcing verdict at iteration {iteration_count}")
+                                        if resume_next == "self":
+                                            resume_output["thought_step"] = 3  # Force to verdict step
+                                    elif iteration_count >= 24:
+                                        print(f"\n[HARD LIMIT] Forcing END at iteration {iteration_count}")
+                                        resume_next = "END"
+                                        resume_output["next"] = "END"
                                 
                                 if isinstance(resume_output, dict) and resume_output.get("next") == "END":
                                     print(f"\n[WORKFLOW END] Reached END state at iteration {iteration_count}")

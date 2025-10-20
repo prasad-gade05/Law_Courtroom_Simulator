@@ -137,7 +137,7 @@ def test_api():
     print("\n[CLIENT] Sending case to API...")
     print(f"[CLIENT] Endpoint: {url}")
     print(f"[CLIENT] Payload size: {len(json.dumps(payload))} bytes")
-    print(f"[CLIENT] Maximum iterations: 28")
+    print(f"[CLIENT] Maximum iterations: 25")
     print(f"[CLIENT] Timeout: 1800 seconds (30 minutes)")
     
     try:

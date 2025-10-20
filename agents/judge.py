@@ -29,20 +29,25 @@ class JudgeAgent:
 "You are a presiding judge overseeing a courtroom simulation. Your primary role is to evaluate the arguments presented by the lawyer and prosecutor for logical consistency, factual accuracy, and adherence to legal principles."
 "Point out inconsistencies, hallucinations, or errors in the agents' arguments and provide constructive feedback to help refine them."
 "Call upon the Law Retriever and Web Searcher agents as necessary to verify or clarify legal and factual claims made during the arguments."
-"Monitor the proceedings and identify when no new points are being raised, all conflicts and rebuttals have been adequately addressed, and the case is ready for a verdict, When the arguments have reached this stage, request final statements from both the lawyer and prosecutor before delivering your impartial verdict."
+"Monitor the proceedings and identify when sufficient arguments have been presented and the case is ready for a verdict."
+"CRITICAL: Ensure BOTH sides (lawyer AND prosecutor) have equal opportunity to present their case. You MUST alternate between them."
+"When deciding next speaker, check who spoke last in the message history and give the OTHER party a turn."
 "Summarize the case before delivering a verdict, outlining the key points of contention and the reasoning behind your decision."
-"Facilitate a fair and structured discussion, ensuring that both parties have equal opportunity to present their case."
 "Your decisions and comments should be impartial, grounded in logic, and aimed at maintaining the integrity of the courtroom process."
+
+IMPORTANT INSTRUCTIONS:
+1. When ready for verdict, start your response with "VERDICT DELIVERED:"
+2. When continuing trial, end your response with "NEXT SPEAKER: lawyer" or "NEXT SPEAKER: prosecutor"
+3. Always use the exact format "NEXT SPEAKER: [lawyer/prosecutor]" so routing is clear
+4. Do NOT say things like "the next speaker should be" - use the exact format above
 
 you will go through the following chain of thought steps:
 1. Review arguments
 2. legal data retrieval
-3. web search
-4. check if trial is ready for verdict
-5. give response based on above steps
-6. determine next speaker
+3. web search (if needed) 
+4. verdict OR route to next speaker
 
-IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or other agents. Do not confuse with precedent cases. Avoid very long responses.
+Do ONLY 'current_task', other tasks will be done in next steps or by other agents. Avoid very long responses.
 """
 
     def get_thought_steps(self) -> List[str]:
@@ -54,18 +59,18 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
             "1. Listen to the arguments presented by both the lawyer and prosecutor. Note their key points and claims. Identify potential hallucinations or logical errors or factual errors in latest argument.",
             "2. Determine the specific legal data (e.g., laws, IPCs, legal case precedents) required for cross verificaton of identified errors. Clearly ask the law retriever agent for the necessary legal data.",
             "3. Evaluate if additional web-based information is needed. If yes, ask the web searcher agent with specific details. If not, reply only with the keyword 'none.'",
-            """4. Assess the current state of the case. Check if ready for verdict: 
-            - If iteration >= 22 OR 8+ arguments present from both sides, trial is ready for final statements.
-            - If iteration >= 24, MUST proceed to verdict preparation immediately.
-            DO NOT give verdict yet, only assess readiness.""",
-            """5. Provide constructive feedback or comments, pointing out logical flaws, factual inconsistencies, or unsupported claims in the arguments if present based on retrieved data. 
-            From previous thought step:
-            - If trial is ready AND iteration >= 22, request final statements from both lawyer and prosecutor (one at a time).
-            - If iteration >= 24, skip requesting more statements and proceed to verdict.
-            - If iteration >= 26, IMMEDIATELY deliver verdict with keyphrase "Given Verdict" - DO NOT delay further.
-            - If final statements already received OR iteration >= 24, summarize the case and deliver verdict with keyphrase "Given Verdict".
-            Write the response as live dialogue (avoid bullet points), Maintain an impartial tone.""",
-            "6. Determine next speaker: respond with only one of the keywords 'lawyer' or 'prosecutor' or 'retriever' or 'web_searcher' or 'END' if verdict is given in previous response. If iteration >= 26, MUST choose 'END'." 
+            """4. Make final decision for this turn:
+            A) VERDICT PATH - If ready for verdict (6+ arguments from each side OR iteration >= 20):
+               - IMMEDIATELY deliver verdict starting with exact keyphrase "VERDICT DELIVERED:"
+               - Summarize case and state guilty or not guilty
+               
+            B) CONTINUE TRIAL PATH - If NOT ready for verdict:
+               - Provide brief feedback on latest argument
+               - Check message history to see who spoke last
+               - Respond with ONLY ONE KEYWORD at the end: "lawyer" (if prosecutor spoke last) OR "prosecutor" (if lawyer spoke last)
+               - Format: [Your feedback here]. NEXT SPEAKER: lawyer
+            
+            Be clear and decisive. Do not be ambiguous."""
         ]
 
     async def process(self, state: AgentState) -> AgentState:
@@ -118,7 +123,7 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
         # Safely extract content from result
         result_content = safe_get_content(result)
         
-        if state["thought_step"] == 0 or state["thought_step"] == 3 or state["thought_step"] == 4:
+        if state["thought_step"] == 0 or state["thought_step"] == 2:
             # Initial review or post-web search steps
             response = {
                 "messages": [HumanMessage(content=result_content, name="judge")],
@@ -130,30 +135,43 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
             # Legal data retrieval step
             response = {
                 "messages": [HumanMessage(content=result_content, name="judge") ],
-                "next": "retriever",
-                "thought_step": 2,
+                "next": self.determine_after_legal_data(result_content),
+                "thought_step": 2 if self.determine_after_legal_data(result_content) == "retriever" else 3,
                 "caller": "judge"
             }
-        elif state["thought_step"] == 2:
-            # Web search decision step
-            response = {
-                "messages": [HumanMessage(content=result_content, name="judge") ],
-                "next": self.is_web_search_needed(result_content),
-                "thought_step": 3,
-                "caller": "judge"
-            }
-        elif state["thought_step"] == 5:
-            # Final decision step
-            response = {
-                "messages": [HumanMessage(content=f"next speaker: {result_content}", name="judge")],
-                "next": self.next_speaker(result_content),
-                "thought_step": 0,
-                "caller": "judge"
-            }
+        elif state["thought_step"] == 3:
+            # Final decision: Verdict OR route to next speaker
+            # Check if verdict was delivered
+            if "VERDICT DELIVERED" in result_content:
+                response = {
+                    "messages": [HumanMessage(content=result_content, name="judge")],
+                    "next": "END",
+                    "thought_step": 0,
+                    "caller": "judge"
+                }
+            else:
+                # No verdict - determine next speaker from content
+                next_dest = self.extract_next_speaker(result_content, state)
+                response = {
+                    "messages": [HumanMessage(content=result_content, name="judge")],
+                    "next": next_dest,
+                    "thought_step": 0,
+                    "caller": "judge"
+                }
         else:
-            raise ValueError("Invalid thought step")
+            raise ValueError(f"Invalid thought step: {state['thought_step']}")
 
         return response
+    
+    def determine_after_legal_data(self, content: str) -> Literal["self", "retriever"]:
+        """
+        Determines if legal data retrieval is needed based on the content.
+        Returns 'retriever' if needed, 'self' otherwise.
+        """
+        if "none" in content.lower() or "no legal data" in content.lower():
+            return "self"
+        else:
+            return "retriever"
     
     def is_web_search_needed(self, content: str) -> Literal["self", "web_searcher"]:
         """
@@ -164,14 +182,107 @@ IMPORTANT NOTE: Do ONLY 'current_task', other task will be done in next steps or
             return "self"
         else:
             return "web_searcher"
+    
+    def extract_next_speaker(self, content: str, state: AgentState) -> Literal["lawyer", "prosecutor", "END"]:
+        """
+        Extract the next speaker from judge's response.
+        Handles multiple formats:
+        - "NEXT SPEAKER: lawyer"
+        - "The next speaker should be the lawyer"
+        - "lawyer" (keyword)
+        Also checks iteration count as failsafe.
+        """
+        content_lower = content.lower()
         
-    def next_speaker(self, content: str) -> Literal["lawyer", "prosecutor", "END"]:
-        """
-        Determines the next speaker based on the content.
-        """
-        if re.search(r"lawyer", content, re.IGNORECASE):
-            return "lawyer"
-        if re.search(r"END", content, re.IGNORECASE):
+        # Check iteration count as failsafe for termination
+        iteration = state.get("iteration_count", 0)
+        if iteration >= 24:
+            print(f"[JUDGE] Iteration {iteration} >= 24, forcing END")
             return "END"
-        else:
+        
+        # Look for explicit patterns
+        if "next speaker:" in content_lower:
+            # Extract after "NEXT SPEAKER:"
+            parts = content_lower.split("next speaker:")
+            if len(parts) > 1:
+                speaker_text = parts[1].strip().split()[0]  # Get first word
+                if "lawyer" in speaker_text:
+                    return "lawyer"
+                elif "prosecutor" in speaker_text:
+                    return "prosecutor"
+        
+        # Look for "the next speaker should be the [lawyer/prosecutor]"
+        if "defense lawyer" in content_lower or ("next" in content_lower and "lawyer" in content_lower):
+            return "lawyer"
+        if "next" in content_lower and "prosecutor" in content_lower:
             return "prosecutor"
+        
+        # Direct keyword search (with exclusion to avoid false positives)
+        if "lawyer" in content_lower and "prosecutor" not in content_lower:
+            return "lawyer"
+        elif "prosecutor" in content_lower and "lawyer" not in content_lower:
+            return "prosecutor"
+        
+        # If no clear indication, check message history to alternate
+        messages = state.get("messages", [])
+        if messages:
+            for msg in reversed(messages):
+                msg_name = ""
+                if hasattr(msg, 'name'):
+                    msg_name = msg.name
+                elif isinstance(msg, dict) and 'name' in msg:
+                    msg_name = msg['name']
+                
+                if msg_name == "prosecutor":
+                    print(f"[JUDGE] Last speaker was prosecutor, routing to lawyer")
+                    return "lawyer"
+                elif msg_name == "lawyer":
+                    print(f"[JUDGE] Last speaker was lawyer, routing to prosecutor")
+                    return "prosecutor"
+        
+        # Default: give lawyer first turn (fair trial principle)
+        print(f"[JUDGE] No clear routing found, defaulting to lawyer")
+        return "lawyer"
+        
+    def next_speaker(self, content: str, state: AgentState) -> Literal["lawyer", "prosecutor", "END"]:
+        """
+        Determines the next speaker based on the content and state.
+        Checks for END first (verdict), then looks at message history to alternate fairly.
+        """
+        content_lower = content.lower()
+        
+        # Check for END/verdict keywords first
+        if any(keyword in content_lower for keyword in ["end", "verdict delivered", "trial concluded"]):
+            return "END"
+        
+        # Check iteration count as failsafe
+        iteration = state.get("iteration_count", 0)
+        if iteration >= 24:
+            return "END"
+        
+        # Check for specific agent routing in content
+        if "lawyer" in content_lower and "prosecutor" not in content_lower:
+            return "lawyer"
+        elif "prosecutor" in content_lower and "lawyer" not in content_lower:
+            return "prosecutor"
+        
+        # Look at message history to determine who spoke last
+        messages = state.get("messages", [])
+        if messages:
+            # Search backwards for the last lawyer or prosecutor message
+            for msg in reversed(messages):
+                # Get the name/role from message
+                msg_name = ""
+                if hasattr(msg, 'name'):
+                    msg_name = msg.name
+                elif isinstance(msg, dict) and 'name' in msg:
+                    msg_name = msg['name']
+                
+                # Alternate based on last speaker
+                if msg_name == "prosecutor":
+                    return "lawyer"  # Give lawyer a turn
+                elif msg_name == "lawyer":
+                    return "prosecutor"  # Give prosecutor a turn
+        
+        # Default: if no clear pattern, start with lawyer (defense goes first in many systems)
+        return "lawyer"
