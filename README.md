@@ -1,424 +1,249 @@
-# PathRAG Court Simulator ⚖️
+# Lex Simulacra - Law Courtroom Simulator
 
-An AI-powered legal courtroom simulator using multi-agent orchestration with LangGraph. Experience realistic trial proceedings with intelligent agents representing judges, lawyers, and prosecutors debating real legal cases.
-
-## Features
-
-- **Multi-Agent System** - Judge, Defense Lawyer, Prosecutor, Legal Researcher, Kanoon Fetcher, and Web Searcher working together
-- **Local & Cloud Options** - Works with Ollama (local LLM) or Google Gemini AI
-- **Robust Workflow** - LangGraph-based orchestration ensures guaranteed verdict delivery
-- **RAG Integration** - Retrieval-Augmented Generation for accurate legal research
-- **Real-Time Streaming** - Watch the trial unfold with live updates
-- **Fair Proceedings** - Both prosecution and defense get equal speaking opportunities
-- **Guaranteed Verdict** - Multi-layer safety mechanisms ensure verdict is always delivered (max 40 iterations)
-- **Smart Debating** - Automatic debate conclusion when arguments are exhausted
-
----
+An AI-powered legal courtroom simulator that uses multi-agent orchestration with LangGraph to conduct realistic trial proceedings. The system simulates a complete courtroom environment where AI agents representing judges, defense lawyers, and prosecutors debate legal cases using real legal frameworks.
 
 ## Getting Started
 
-### Prerequisites
+### Option 1: Automated Setup (Recommended for Windows)
 
-Before you begin, ensure you have:
-
-- **Windows 10/11, Linux, or macOS**
-- **Python 3.9 or higher** - [Download Python](https://www.python.org/downloads/)
-- **LLM Setup (Choose one)**:
-  - **Option A**: Ollama with a compatible model (local, recommended)
-    ```bash
-    # Install Ollama from https://ollama.ai/
-    ollama pull llama3:8b  # or your preferred model
-    ```
-  - **Option B**: Google AI API Key (free) - [Get API Key](https://aistudio.google.com/app/apikey)
-- **8+ GB RAM** (16 GB recommended)
-- **Internet connection** (required for APIs and legal data retrieval)
-
-### Step 1: Clone the Repository
+Run the automated setup script that handles all installation steps:
 
 ```bash
-git clone https://github.com/prasad-gade05/Law_Courtroom_Simulator
-cd Law_Courtroom_Simulator
+setup.bat
 ```
 
-### Step 2: Set Up Virtual Environment
+The script will automatically:
+- Create a virtual environment
+- Install all required Python packages
+- Download necessary Ollama models (nomic-embed-text, gpt-oss:120b-cloud)
+- Create configuration directories
+- Set up your .env file
+- Verify the installation
 
-**Windows:**
+### Option 2: Manual Setup
+
+**Step 1: Create Virtual Environment**
 
 ```bash
+# Windows
 python -m venv venv
 venv\Scripts\activate
-```
 
-**Linux/macOS:**
-
-```bash
+# Linux/macOS
 python -m venv venv
 source venv/bin/activate
 ```
 
-### Step 3: Install Dependencies
+**Step 2: Install Dependencies**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-This will install:
+**Step 3: Install and Configure Ollama**
 
-- **FastAPI** - API framework
-- **LangChain & LangGraph** - Multi-agent orchestration
-- **LangChain Google GenAI** - Google Gemini integration
-- **LangChain Ollama** - Local LLM support
-- **ChromaDB** - Vector database
-- **Streamlit** - Web UI
-- **CrewAI** - Web search capabilities
-- **Rich** - Terminal formatting
-- And other required packages
+Download and install Ollama from https://ollama.com/download
 
-### Step 4: Configure Environment
+Pull required models:
+```bash
+ollama pull nomic-embed-text
+ollama pull gpt-oss:120b-cloud
+```
 
-**Create environment file:**
+Verify Ollama is running:
+```bash
+ollama list
+```
+
+**Step 4: Create Environment Configuration**
+
+Create a `.env` file in the project root with the following configuration:
+
+```env
+# Ollama Configuration
+OLLAMA_MODEL=gpt-oss:120b-cloud
+
+# External APIs
+SERPER_API_KEY=your_serper_api_key
+KANOON_API_KEY=your_kanoon_api_key
+```
+
+**Step 5: Create Required Directories**
 
 ```bash
-# Windows
-copy .env.example .env
-
-# Linux/macOS
-cp .env.example .env
+mkdir private_documents
+mkdir public_documents
+mkdir chroma_db
 ```
 
-**Configure your LLM:**
-
-Choose ONE of the following options:
-
-**Option A - Ollama (Local, Recommended):**
-```env
-OLLAMA_MODEL=llama3:8b
-# Or: gpt-oss:120b-cloud, mistral:7b, etc.
-```
-
-**Option B - Google Gemini:**
-```env
-GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
-GEMINI_MODEL=gemini-2.5-flash-lite
-GEMINI_EMBEDDING_MODEL=text-embedding-004
-```
-
-**Optional - Additional APIs:**
-```env
-SERPER_API_KEY=YOUR_SERPER_KEY       # For web search (optional)
-KANOON_API_KEY=YOUR_KANOON_KEY       # For Indian case law (optional)
-```
-
-### Step 5: Verify Setup
+**Step 6: Verify Setup**
 
 ```bash
 python verify_setup.py
 ```
 
-**Expected output:**
+### Running the Application
 
-```
-✓ Python version: 3.x.x
-✓ Virtual environment: Active
-✓ Dependencies: Installed
-✓ Google API Key: Valid
-✓ All checks passed!
-```
-
-### Step 6: Run the Application
-
-**Option A: API Mode (Recommended for testing)**
-
-Terminal 1 - Start the backend server:
-
-```bash
-venv\Scripts\activate  # Windows
-# or
-source venv/bin/activate  # Linux/macOS
-
-python app.py
-```
-
-Wait for:
-
-```
-INFO: Uvicorn running on http://0.0.0.0:8000
-All agents initialized successfully
-```
-
-Terminal 2 - Run a test case:
-
-```bash
-venv\Scripts\activate  # Windows
-# or
-source venv/bin/activate  # Linux/macOS
-
-python test_api_demo.py
-```
-
-**Option B: Web Interface**
-
-Terminal 1 - Start backend:
+**Start the Backend Server:**
 
 ```bash
 python app.py
 ```
 
-Terminal 2 - Start web UI:
+Wait for the message: `All agents initialized successfully`
 
-```bash
-streamlit run interface/stapp.py
-```
+**Run a Test Case:**
 
-Browser will open automatically at `http://localhost:8501`
-
----
-
-## Usage
-
-### Running Sample Case
-
-The project includes a sample defamation case:
-
+In a separate terminal:
 ```bash
 python test_api_demo.py sample_case.txt
 ```
 
-### Creating Your Own Case
+## Environment Configuration
 
-Create a text file with this format:
+Create a `.env` file with these required variables:
 
-```text
-Case Title: State vs. [Defendant Name]
+```env
+# Ollama Configuration
+OLLAMA_MODEL=gpt-oss:120b-cloud
 
-Case Summary:
-[Detailed description of what happened, who is involved, dates, location]
-
-Case Details:
-1. Date of Incident: [Date]
-2. Nature of Offense: [Crime/Issue]
-3. Evidence: [List of evidence]
-4. Parties:
-   - Accused: [Name, age, occupation]
-   - Victim: [Name, age, occupation]
-
-Defense Position:
-1. [Main defense argument]
-2. [Supporting evidence]
-3. [Legal precedents]
-
-Prosecution Claims:
-1. [Charges]
-2. [Evidence against accused]
-3. [Witness statements]
-
-Request:
-[What legal analysis you need]
+# External APIs
+SERPER_API_KEY=your_serper_api_key
+KANOON_API_KEY=your_kanoon_api_key
 ```
 
-Then run:
+Configuration details:
+- **OLLAMA_MODEL**: The primary LLM model for all agents. Default is gpt-oss:120b-cloud. Alternative options include llama3:8b, mistral:7b, or other Ollama-compatible models.
+- **SERPER_API_KEY**: API key for web search functionality. Obtain from https://serper.dev (optional but recommended for comprehensive legal research).
+- **KANOON_API_KEY**: API key for accessing Indian case law database through Indian Kanoon. Required for fetching precedent cases.
 
-```bash
-python test_api_demo.py your_case.txt
-```
+## System Architecture
 
-### Expected Output
+### Multi-Agent Workflow
 
-You'll see real-time streaming of the trial:
+The system implements a sophisticated multi-agent workflow orchestrated by LangGraph. The trial proceeds through structured phases with agents communicating through a shared state management system.
 
-```
-================================================================================
-⚔️ PROSECUTOR - Iteration 2
-================================================================================
-[Prosecutor's opening statement and charges...]
+**Workflow Sequence:**
 
-================================================================================
-🛡️ LAWYER - Iteration 4
-================================================================================
-[Defense arguments and counterpoints...]
+1. **Case Initialization**: User submits case details through the API endpoint
+2. **Precedent Research**: Kanoon Fetcher agent searches for similar historical cases
+3. **Prosecution Opening**: Prosecutor agent analyzes the case and formulates charges
+4. **Judicial Review**: Judge agent evaluates prosecution claims and directs proceedings
+5. **Legal Research**: Retriever agent queries the vector database for relevant laws and statutes
+6. **Defense Arguments**: Lawyer agent constructs defense based on legal research and case facts
+7. **Iterative Debate**: Judge facilitates alternating arguments between prosecution and defense
+8. **Verdict Generation**: Verdict agent synthesizes all arguments and delivers final judgment
 
-================================================================================
-⚖️ JUDGE - Iteration 20
-================================================================================
-[Judge's analysis and reasoning...]
+### Agent Descriptions
 
-================================================================================
-🏛️ FINAL VERDICT
-================================================================================
-VERDICT DELIVERED: After careful consideration of all arguments...
-[Detailed verdict with legal reasoning]
-```
+**Judge Agent**
 
----
+The Judge agent serves as the central orchestrator of the trial workflow. It evaluates arguments from both sides for logical consistency, factual accuracy, and legal soundness. The judge maintains fairness by ensuring equal speaking opportunities for prosecution and defense. It actively monitors the proceedings to detect argument exhaustion or repetition, and has the authority to conclude debates when natural completion is reached. The judge does not conduct research but relies on its legal knowledge to provide feedback and corrections to other agents.
+
+**Defense Lawyer Agent**
+
+The Lawyer agent represents the defendant and builds comprehensive defense strategies. It follows a structured chain of thought process: reviewing case details, identifying required legal information, requesting data from the retriever agent, assessing need for web-based research, and constructing persuasive arguments. The lawyer actively counters prosecution claims using legal precedents, statutes, and factual evidence. It responds to judicial feedback by refining arguments while maintaining the client's position. The agent prioritizes local database searches before requesting web-based information.
+
+**Prosecutor Agent**
+
+The Prosecutor agent advocates for the opposing party by challenging defense arguments and presenting evidence. It analyzes the case to identify weaknesses in defense claims and formulates charges based on applicable laws. The prosecutor follows the same information-gathering protocol as the lawyer, first consulting the retriever agent and then requesting web searches if needed. It maintains objectivity while building a strong case through logical reasoning and legal provisions. The prosecutor responds to judicial observations with due diligence and adapts arguments to maintain prosecutorial strength.
+
+**Legal Retriever Agent**
+
+The Retriever agent functions as a legal research assistant with access to two vector databases. The private database stores user-specific case documents and files, while the public database contains Indian Penal Code provisions, legal statutes, and precedent case laws. The agent processes queries from the judge, lawyer, or prosecutor by formulating precise search queries and retrieving relevant legal documents. It uses ChromaDB with Ollama embeddings to perform semantic searches across the legal document corpus. The retriever evaluates result sufficiency and can indicate when additional web-based research is needed.
+
+**Kanoon Fetcher Agent**
+
+The Kanoon Fetcher agent specializes in retrieving similar historical cases from the Indian Kanoon database. It extracts relevant keywords from the user's case description and submitted documents using an LLM-based extraction process. The agent selects the top 5 most relevant legal terms and searches for precedent cases that match the current case's characteristics. This provides both prosecution and defense with historical context and precedent-based arguments. The fetcher operates at the beginning of the trial workflow to establish foundational research.
+
+**Web Search Agent**
+
+The Web Searcher agent provides additional research capabilities by searching the internet for legal information not found in local databases. It uses the Serper API to conduct targeted searches based on specific queries from the lawyer or prosecutor. The agent is invoked only when local database results are insufficient or when specific external information is required. It returns relevant search results that agents can cite in their arguments. This ensures comprehensive research coverage beyond the local legal document corpus.
+
+**Verdict Agent**
+
+The Verdict agent generates the final judgment after the debate concludes. It receives the complete trial transcript including all arguments, rebuttals, evidence presented, and judicial observations. The agent synthesizes this information to produce a structured verdict that includes findings of fact, application of law, legal reasoning, and final judgment. The verdict is guaranteed to be delivered through multiple safety mechanisms built into the workflow. The agent ensures the decision is legally sound and addresses all key points raised during the trial.
+
+### Vector Database System
+
+The system uses ChromaDB as its vector database for semantic search across legal documents. Two separate collections are maintained:
+
+**Public Document Store**: Contains general legal reference materials including Indian Penal Code sections, legal statutes, case law precedents, and legal commentaries. This database is shared across all cases and provides the foundational legal knowledge base.
+
+**Private Document Store**: Stores case-specific documents uploaded by users including case files, evidence documents, witness statements, and related materials. This database is isolated per case to maintain data privacy.
+
+**Embedding Process**: Documents are processed using Ollama's nomic-embed-text model which converts legal text into high-dimensional vector representations. The RecursiveCharacterTextSplitter breaks documents into semantic chunks before embedding. These embeddings enable semantic similarity search where agents can retrieve legally relevant content based on conceptual meaning rather than keyword matching.
+
+**Retrieval Process**: When an agent queries the vector database, the query text is embedded using the same model and compared against stored document embeddings using cosine similarity. The system returns the most semantically relevant legal passages along with their source metadata. This enables agents to access precise legal information without manually searching through thousands of pages.
+
+### LangGraph Workflow Orchestration
+
+The trial workflow is implemented as a state machine using LangGraph. Each agent is represented as a node, and edges define the flow of control between agents. The workflow maintains a shared state object that accumulates all messages, decisions, and context as the trial progresses.
+
+The workflow implements conditional routing where the judge's decisions determine which agent speaks next. Smart triggers detect debate completion based on iteration count and argument patterns. Multiple safety mechanisms ensure verdict delivery: the router begins winding down at iteration 16, automatic verdict forcing occurs at iteration 18, and emergency verdict generation activates at iteration 22 if needed.
+
+State checkpointing through MemorySaver allows the workflow to track its progress and recover from errors. The streaming architecture enables real-time updates to users as each agent contributes to the trial.
 
 ## Project Structure
 
 ```
-Inter-IIT-Pathway-PathRAG-Court-Simulator/
+law_courtroom_simulator/
+├── agents/                    # AI agent implementations
+│   ├── judge.py              # Judge orchestration and evaluation
+│   ├── lawyer.py             # Defense lawyer logic
+│   ├── prosecutor.py         # Prosecution logic
+│   ├── retriever.py          # Vector database retrieval
+│   ├── kanoon_fetcher.py     # Case law precedent fetching
+│   ├── web_search.py         # Web search integration
+│   ├── verdict_agent.py      # Final verdict generation
+│   └── base.py               # Shared agent base classes
+│
+├── core/                      # Core system components
+│   ├── workflow.py           # LangGraph workflow orchestration
+│   ├── state.py              # Shared state management
+│   ├── chroma_store.py       # ChromaDB vector store interface
+│   └── config.py             # System configuration
+│
+├── interface/                 # User interfaces
+│   └── stapp.py              # Streamlit web interface
+│
+├── private_documents/         # User case-specific documents
+├── public_documents/          # Legal reference materials (IPC, statutes)
+├── chroma_db/                # Vector database storage
 │
 ├── app.py                    # FastAPI backend server
-├── test_api_demo.py         # API testing script
-├── sample_case.txt          # Example case file
-├── requirements.txt         # Python dependencies
-├── verify_setup.py          # Setup verification tool
-├── .env                     # Your configuration (create this)
-├── .env.example            # Configuration template
-│
-├── agents/                  # AI agent implementations
-│   ├── judge.py            # Judge agent
-│   ├── lawyer.py           # Defense lawyer agent
-│   ├── prosecutor.py       # Prosecutor agent
-│   ├── retriever.py        # Legal document retriever
-│   ├── kanoon_fetcher.py   # Case law fetcher
-│   └── web_search.py       # Web search agent
-│
-├── core/                    # Core system components
-│   ├── workflow.py         # LangGraph workflow orchestration
-│   ├── state.py            # Agent state management
-│   └── chroma_store.py     # Vector database interface
-│
-├── interface/              # User interfaces
-│   └── stapp.py           # Streamlit web UI
-│
-├── private_documents/      # Your case documents (gitignored)
-├── public_documents/       # Legal reference documents
-└── chroma_db/             # Vector database cache (gitignored)
+├── test_api_demo.py          # API testing client
+├── verify_setup.py           # Installation verification
+├── setup.bat                 # Automated setup script (Windows)
+├── requirements.txt          # Python dependencies
+├── sample_case.txt           # Example case file
+└── .env                      # Environment configuration
 ```
-
----
-
-## Configuration
-
-### Environment Variables
-
-Edit `.env` file based on your chosen LLM:
-
-```env
-# For Ollama (Local)
-OLLAMA_MODEL=llama3:8b
-
-# OR For Google Gemini
-GOOGLE_API_KEY=your_google_api_key
-GEMINI_MODEL=gemini-2.5-flash-lite
-GEMINI_EMBEDDING_MODEL=text-embedding-004
-
-# Optional APIs
-SERPER_API_KEY=your_serper_key       # For web search
-KANOON_API_KEY=your_kanoon_key       # For Indian case law
-```
-
-### Verdict Guarantee Mechanism
-
-The simulator uses multiple safety layers to ensure a verdict is always delivered:
-
-1. **Iteration 16**: Router starts winding down debate
-2. **Iteration 18**: Judge automatically forces verdict (normal path)
-3. **Iteration 22**: Emergency verdict safety net (if needed)
-4. **Fallback**: LLM-based analysis verdict if all else fails
-
-This ensures you'll **always** get a verdict, even if the workflow encounters issues.
-
-## How It Works
-
-### Agent Workflow
-
-```
-1. User submits case
-    ↓
-2. Kanoon Fetcher finds similar cases
-    ↓
-3. Prosecutor builds charges
-    ↓
-4. Judge reviews and requests legal research
-    ↓
-5. Legal Retriever fetches relevant laws
-    ↓
-6. Defense Lawyer counters with arguments
-    ↓
-7. Judge evaluates both sides
-    ↓
-8. [Cycle repeats with rebuttals]
-    ↓
-9. Judge delivers final verdict
-```
-
-### Key Agents
-
-- **👨‍⚖️ Judge** - Controls trial flow, evaluates arguments, ensures fair proceedings, delivers verdict
-- **🛡️ Defense Lawyer** - Builds defense arguments, challenges prosecution, cites legal precedents
-- **⚔️ Prosecutor** - Presents charges, builds case against defendant, rebuts defense claims
-- **📚 Legal Retriever** - Searches ChromaDB vector database for relevant legal documents
-- **🔍 Kanoon Fetcher** - Finds similar cases from Indian Kanoon database
-- **🌐 Web Searcher** - Searches internet for additional legal information and precedents
-- **🏛️ Verdict Agent** - Generates final verdict based on complete trial transcript
-
-### Technologies Used
-
-- **LangGraph** - Multi-agent workflow orchestration
-- **LangChain** - LLM abstraction and tooling
-- **ChromaDB** - Vector database for legal document storage
-- **FastAPI** - REST API backend
-- **Streamlit** - Web-based user interface
-- **CrewAI** - Agent framework for web search
-- **Ollama/Google Gemini** - Large language models
-
----
-
-## Troubleshooting
-
-### Issue: "Recursion limit reached"
-
-**Solution**: The simulator has built-in safety mechanisms. If you see this error, the emergency verdict should have been delivered. Check the last output messages for the verdict.
-
-### Issue: "Ollama connection failed"
-
-**Solution**: Ensure Ollama is installed and running:
-```bash
-# Start Ollama service
-ollama serve
-
-# Test connection
-ollama list
-```
-
-### Issue: "No verdict displayed"
-
-**Solution**: The verdict is guaranteed to be delivered. Check:
-1. Look for "🏛️ FINAL VERDICT" header in output
-2. Check for "VERDICT DELIVERED:" in the message
-3. Verdict is shown at iteration 18-22 range
-
----
 
 ## API Reference
 
-### POST `/stream_workflow`
+**Endpoint:** `POST /stream_workflow`
 
-Stream trial workflow in real-time.
+Streams trial proceedings in real-time using Server-Sent Events.
 
-**Request:**
-
+**Request Body:**
 ```json
 {
-  "user_prompt": "Your case description here"
+  "user_prompt": "Your case description and details"
 }
 ```
 
-**Response:** Server-Sent Events (SSE) stream
+**Response:** Server-Sent Events stream with JSON payloads containing agent messages, status updates, and final verdict.
 
-**Example:**
-
+**Example Usage:**
 ```python
 import requests
 
 url = "http://localhost:8000/stream_workflow"
-data = {"user_prompt": "Your case here"}
+data = {"user_prompt": "Your case details here"}
 
 response = requests.post(url, json=data, stream=True)
-
 for line in response.iter_lines():
     if line:
         print(line.decode('utf-8'))
 ```
-
----

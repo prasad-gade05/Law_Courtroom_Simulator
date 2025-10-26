@@ -1,5 +1,5 @@
 """
-API Demo Script - PathRAG Court Simulator
+API Demo Script - Lex Simulacra - Law Courtroom Simulator
 Tests the workflow endpoint with a sample case
 Enhanced with clear argument display and formatted output
 """
@@ -128,7 +128,7 @@ def test_api():
     }
     
     print("\n" + "=" * 80)
-    print("PathRAG Court Simulator - API Demo")
+    print("Lex Simulacra - Law Courtroom Simulator - API Demo")
     print("=" * 80)
     print("\nCase Summary:")
     print("-" * 80)

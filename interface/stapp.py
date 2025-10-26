@@ -20,7 +20,7 @@ async def fetch_stream(user_prompt):
                 if line:
                     yield line.decode("utf-8")
 
-st.title("🏛️ PathRAG Court Simulator")
+st.title("🏛️ Lex Simulacra - Law Courtroom Simulator")
 
 uploaded_files = st.file_uploader(
     "Upload case-related documents",

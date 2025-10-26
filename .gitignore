@@ -44,6 +44,10 @@ chroma_db/
 _archive/
 my_graph.png
 
+# Public documents - ignore all except IndianPenalCode.txt
+public_documents/*
+!public_documents/IndianPenalCode.txt
+
 # API Keys and secrets
 *.key
 *.pem

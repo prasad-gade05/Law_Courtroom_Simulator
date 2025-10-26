@@ -1,12 +1,7 @@
-# --- MODIFIED app.py ---
-
 from core.workflow import TrialWorkflow
 from agents import LawyerAgent, ProsecutorAgent, JudgeAgent, RetrieverAgent, FetchingAgent, WebSearcherAgent
 import asyncio
-# --- CHANGE START ---
-# from langchain_google_genai import ChatGoogleGenerativeAI # No longer needed
 from langchain_ollama import OllamaLLM
-# --- CHANGE END ---
 import os
 from fastapi import FastAPI, Body
 from fastapi.responses import StreamingResponse
@@ -19,37 +14,34 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# --- CHANGE START ---
-# Replace the entire Google Gemini LLM initialization block with the Ollama setup.
-
+# Initialize Ollama LLM
 ollama_model = os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
 
 print("="*80)
-print("LOCAL OLLAMA LLM INITIALIZATION")
+print("OLLAMA LLM INITIALIZATION")
 print("="*80)
 print(f"Model: {ollama_model}")
-print("Local inference - All processing is done on your machine.")
+base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+print(f"Base URL: {base_url}")
 print("="*80)
 
-# Primary LLM for all agents (simpler and more consistent)
+# Primary LLM for all agents
 try:
     llm = OllamaLLM(model=ollama_model, stop=["\nObservation:"])
     # Perform a quick test to ensure Ollama server is running
     llm.invoke("test") 
-    print("Primary LLM initialized and connected to Ollama server successfully")
+    print("Primary LLM initialized and connected to Ollama successfully")
 except Exception as e:
     print(f"ERROR: Failed to initialize or connect to Ollama: {e}")
-    print("Please ensure the Ollama application is running and you have pulled the model (e.g., 'ollama run llama3:8b')")
+    print("Please ensure Ollama is running and the model is pulled")
     raise
 
-# We will use the same LLM instance for all agents for consistency
+# Use the same LLM instance for all agents for consistency
 llms = [llm, llm, llm]
 llm_0 = llm
 
 print(f"LLM instances created for all agents")
 print("="*80)
-
-# --- CHANGE END ---
 
 
 # Initialize Workflow

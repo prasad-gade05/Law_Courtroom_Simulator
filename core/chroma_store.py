@@ -1,15 +1,10 @@
-# --- MODIFIED core/chroma_store.py ---
-
 """
-ChromaDB Vector Store - Local-ready with Ollama embeddings
+ChromaDB Vector Store - Ollama embeddings
 """
 import chromadb
 from chromadb.config import Settings
 from langchain_community.vectorstores import Chroma
-# --- CHANGE START ---
-# from langchain_google_genai import GoogleGenerativeAIEmbeddings # No longer needed
-from langchain_community.embeddings import OllamaEmbeddings # Import Ollama embeddings
-# --- CHANGE END ---
+from langchain_community.embeddings import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pathlib import Path
 import time
@@ -40,12 +35,10 @@ class ChromaVectorStore:
         self.name = name
         self.path = path
         
-        # --- CHANGE START ---
-        # Get embedding model from env or use new default for Ollama
+        # Get embedding model from env or use default for Ollama
         if embedding_model is None:
             embedding_model = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
         self.embedding_model = embedding_model
-        # --- CHANGE END ---
         
         # Set persistence directory
         if persist_directory is None:
@@ -64,12 +57,10 @@ class ChromaVectorStore:
         print()
         
         try:
-            # --- CHANGE START ---
             # Initialize Ollama embeddings
             print(f"Initializing Ollama embeddings...", end='', flush=True)
             self.embeddings = OllamaEmbeddings(model=self.embedding_model)
             print(" [OK]")
-            # --- CHANGE END ---
             
             # Initialize text splitter
             print(f"Initializing text splitter (chunk_size=5000)...", end='', flush=True)
@@ -194,9 +185,7 @@ class ChromaVectorStore:
         if all_texts:
             print("\n" + "=" * 60)
             print(f"Generating embeddings and indexing {len(all_texts)} chunks...")
-            # --- CHANGE START ---
-            print(f"   Using local Ollama embeddings ({self.embedding_model})")
-            # --- CHANGE END ---
+            print(f"   Using Ollama embeddings ({self.embedding_model})")
             print(f"   This may take a few minutes...")
             print(f"   Progress: ", end='', flush=True)
             

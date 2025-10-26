@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo PathRAG Court Simulator - Google Gemini
+echo Lex Simulacra - Law Courtroom Simulator
 echo Windows Setup Script
 echo ============================================
 echo.
@@ -36,7 +36,7 @@ echo ✓ pip upgraded
 echo.
 
 echo Step 5: Installing Python dependencies...
-echo This includes Google Generative AI SDK and LangChain integration
+echo This includes Ollama and LangChain integration
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
     echo ERROR: Failed to install dependencies
@@ -56,20 +56,21 @@ echo.
 echo Step 7: Setting up environment file...
 if exist ".env" (
     echo ✓ .env file already exists
-    echo WARNING: Please verify GOOGLE_API_KEY is set in .env
+    echo WARNING: Please verify OLLAMA_MODEL and OLLAMA_BASE_URL are set in .env
 ) else (
     echo Creating .env from .env.example...
     copy .env.example .env
     echo ✓ .env file created
     echo.
     echo ============================================
-    echo IMPORTANT: Configure Your API Key
+    echo IMPORTANT: Configure Your Environment
     echo ============================================
     echo.
-    echo 1. Visit https://aistudio.google.com/app/apikey
-    echo 2. Create a new API key
-    echo 3. Open .env file and add your key:
-    echo    GOOGLE_API_KEY=your_actual_api_key_here
+    echo Please verify your .env file contains:
+    echo    OLLAMA_MODEL=gpt-oss:120b-cloud
+    echo    OLLAMA_BASE_URL=https://cloud.ollamahub.com
+    echo    SERPER_API_KEY=your_serper_key
+    echo    KANOON_API_KEY=your_kanoon_key
     echo.
     echo Press any key to open .env file in notepad...
     pause >nul
@@ -77,7 +78,59 @@ if exist ".env" (
 )
 echo.
 
-echo Step 8: Verifying setup...
+echo Step 8: Checking Ollama installation...
+where ollama >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ✗ Ollama is not installed or not in PATH
+    echo.
+    echo Please install Ollama from: https://ollama.com/download
+    echo After installation, restart this script.
+    echo.
+    pause
+    exit /b 1
+)
+echo ✓ Ollama is installed
+echo.
+
+echo Step 9: Checking required Ollama models...
+echo This may take several minutes if models need to be downloaded...
+echo.
+
+echo Checking main LLM model (gpt-oss:120b-cloud)...
+ollama list | findstr /C:"gpt-oss:120b-cloud" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Model not found. Downloading gpt-oss:120b-cloud...
+    echo This is a large model and may take 10-20 minutes depending on your connection.
+    ollama pull gpt-oss:120b-cloud
+    if %errorlevel% neq 0 (
+        echo ✗ Failed to download gpt-oss:120b-cloud
+        pause
+        exit /b 1
+    )
+    echo ✓ gpt-oss:120b-cloud downloaded successfully
+) else (
+    echo ✓ gpt-oss:120b-cloud already available
+)
+echo.
+
+echo Checking embedding model (nomic-embed-text)...
+ollama list | findstr /C:"nomic-embed-text" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Model not found. Downloading nomic-embed-text...
+    echo This is a smaller model and should take 1-2 minutes.
+    ollama pull nomic-embed-text
+    if %errorlevel% neq 0 (
+        echo ✗ Failed to download nomic-embed-text
+        pause
+        exit /b 1
+    )
+    echo ✓ nomic-embed-text downloaded successfully
+) else (
+    echo ✓ nomic-embed-text already available
+)
+echo.
+
+echo Step 10: Verifying setup...
 python verify_setup.py
 if %errorlevel% neq 0 (
     echo.
@@ -86,9 +139,6 @@ if %errorlevel% neq 0 (
     echo ============================================
     echo.
     echo Please fix the issues above before running the application.
-    echo Most likely you need to set GOOGLE_API_KEY in .env file.
-    echo.
-    echo Get your API key from: https://aistudio.google.com/app/apikey
     echo.
     pause
     exit /b 1
@@ -99,17 +149,17 @@ echo ============================================
 echo Setup Complete!
 echo ============================================
 echo.
-echo Your courtroom simulator is ready to use with Google Gemini API.
+echo Your Lex Simulacra - Law Courtroom Simulator is ready to use with Ollama.
 echo.
 echo Key Features:
-echo  - 10x faster than local models
+echo  - Cloud-based Ollama models via ollamahub.com
+echo  - Local embedding generation
 echo  - No GPU required
 echo  - Consistent performance
-echo  - Cloud-powered inference
 echo.
 echo Next steps:
 echo 1. Add your documents to private_documents and public_documents folders
-echo 2. Verify GOOGLE_API_KEY is set in .env file
+echo 2. Verify OLLAMA_MODEL and API keys are set in .env file
 echo 3. Run the application with: python app.py
 echo 4. Test with: python test_api_demo.py
 echo.

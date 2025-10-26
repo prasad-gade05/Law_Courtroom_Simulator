@@ -1,5 +1,5 @@
 """
-Setup Verification Script for Google Gemini API Version
+Setup Verification Script for Ollama Version
 Checks if all components are properly configured
 """
 import sys
@@ -26,47 +26,62 @@ def check_python_version():
         is_valid
     )
 
-def check_google_api_key():
-    """Check if Google API key is configured"""
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        return print_status("GOOGLE_API_KEY in environment", False)
+def check_ollama_config():
+    """Check if Ollama configuration is set"""
+    model = os.getenv("OLLAMA_MODEL")
+    base_url = os.getenv("OLLAMA_BASE_URL")
     
-    # Check if it's a placeholder
-    if api_key == "your_google_api_key_here" or len(api_key) < 20:
-        return print_status("GOOGLE_API_KEY (appears to be placeholder/invalid)", False)
+    if not model:
+        return print_status("OLLAMA_MODEL in environment", False)
     
-    # Mask the key for display
-    masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "****"
-    return print_status(f"GOOGLE_API_KEY configured ({masked_key})", True)
+    print_status(f"OLLAMA_MODEL configured ({model})", True)
+    
+    if base_url:
+        print_status(f"OLLAMA_BASE_URL configured ({base_url})", True)
+    else:
+        print_status("OLLAMA_BASE_URL (using default localhost)", True)
+    
+    return True
 
-def check_google_api_connection():
-    """Check if we can connect to Google Gemini API"""
+def check_ollama_installation():
+    """Check if Ollama is installed and accessible"""
     try:
-        import google.generativeai as genai
-        api_key = os.getenv("GOOGLE_API_KEY")
-        
-        if not api_key or api_key == "your_google_api_key_here":
-            return print_status("Google Gemini API connection (no API key)", False)
-        
-        # Try to configure and list models
-        genai.configure(api_key=api_key)
-        
-        # Try to get a model - this validates the API key
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            return print_status("Google Gemini API connection successful", True)
-        except Exception as e:
-            error_msg = str(e)
-            if "API_KEY_INVALID" in error_msg or "invalid" in error_msg.lower():
-                return print_status("Google Gemini API connection (Invalid API key)", False)
-            else:
-                return print_status(f"Google Gemini API connection (Error: {error_msg[:50]})", False)
-                
-    except ImportError:
-        return print_status("Google Generative AI package (not installed)", False)
+        import subprocess
+        result = subprocess.run(['ollama', 'list'], capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            return print_status("Ollama installation", True)
+        else:
+            return print_status("Ollama installation (not accessible)", False)
+    except FileNotFoundError:
+        return print_status("Ollama installation (not found in PATH)", False)
     except Exception as e:
-        return print_status(f"Google Gemini API connection (Error: {str(e)[:50]})", False)
+        return print_status(f"Ollama installation (Error: {str(e)[:50]})", False)
+
+def check_ollama_models():
+    """Check if required Ollama models are available"""
+    try:
+        import subprocess
+        result = subprocess.run(['ollama', 'list'], capture_output=True, text=True, timeout=10)
+        
+        if result.returncode != 0:
+            return print_status("Ollama models (cannot list)", False)
+        
+        output = result.stdout
+        
+        # Check for main model
+        main_model = os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
+        main_model_found = main_model in output
+        print_status(f"  - Main model ({main_model})", main_model_found)
+        
+        # Check for embedding model
+        embed_model = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+        embed_model_found = embed_model in output
+        print_status(f"  - Embedding model ({embed_model})", embed_model_found)
+        
+        return main_model_found and embed_model_found
+        
+    except Exception as e:
+        return print_status(f"Ollama models check (Error: {str(e)[:50]})", False)
 
 def check_dependencies():
     """Check if required Python packages are installed"""
@@ -75,8 +90,7 @@ def check_dependencies():
         "uvicorn": "Uvicorn",
         "langchain": "LangChain",
         "langchain_community": "LangChain Community",
-        "langchain_google_genai": "LangChain Google GenAI",
-        "google.generativeai": "Google Generative AI",
+        "langchain_ollama": "LangChain Ollama",
         "chromadb": "ChromaDB",
         "pymupdf": "PyMuPDF (PDF support)",
         "docx": "python-docx (Word support)",
@@ -132,15 +146,25 @@ def check_internet_connection():
     """Check if internet connection is available"""
     try:
         import requests
-        response = requests.get("https://www.google.com", timeout=5)
-        return print_status("Internet connection", response.status_code == 200)
+        base_url = os.getenv("OLLAMA_BASE_URL", "")
+        if "cloud" in base_url.lower():
+            # Cloud Ollama requires internet
+            response = requests.get("https://www.google.com", timeout=5)
+            return print_status("Internet connection (REQUIRED for cloud Ollama)", response.status_code == 200)
+        else:
+            # Local Ollama - internet is optional
+            try:
+                response = requests.get("https://www.google.com", timeout=5)
+                return print_status("Internet connection", response.status_code == 200)
+            except:
+                return print_status("Internet connection (optional for local Ollama)", True)
     except:
-        return print_status("Internet connection (REQUIRED for Gemini API)", False)
+        return print_status("Internet connection check failed", False)
 
 def main():
     """Run all checks"""
     print("=" * 60)
-    print("PathRAG Court Simulator - Google Gemini Version")
+    print("Lex Simulacra - Law Courtroom Simulator")
     print("Setup Verification")
     print("=" * 60)
     print()
@@ -149,8 +173,9 @@ def main():
         "Python Version": check_python_version,
         "Internet Connection": check_internet_connection,
         "Environment File": check_env_file,
-        "Google API Key": check_google_api_key,
-        "Google API Connection": check_google_api_connection,
+        "Ollama Configuration": check_ollama_config,
+        "Ollama Installation": check_ollama_installation,
+        "Ollama Models": check_ollama_models,
         "Python Dependencies": check_dependencies,
         "Directories": check_directories,
         "Documents": check_documents,
@@ -167,10 +192,10 @@ def main():
     
     critical_checks = [
         "Python Version", 
-        "Internet Connection",
         "Environment File",
-        "Google API Key", 
-        "Google API Connection",
+        "Ollama Configuration",
+        "Ollama Installation",
+        "Ollama Models",
         "Python Dependencies"
     ]
     critical_passed = all(results.get(check, False) for check in critical_checks)
@@ -184,11 +209,12 @@ def main():
     else:
         print("✗ Some critical checks failed. Please fix the issues above.")
         print("\nCommon fixes:")
-        print("  - Get API key: https://aistudio.google.com/app/apikey")
+        print("  - Install Ollama: https://ollama.com/download")
+        print("  - Pull models: ollama pull gpt-oss:120b-cloud")
+        print("  - Pull embeddings: ollama pull nomic-embed-text")
         print("  - Create .env: copy .env.example .env")
-        print("  - Add API key to .env: GOOGLE_API_KEY=your_actual_key")
+        print("  - Set OLLAMA_MODEL in .env")
         print("  - Install deps: pip install -r requirements.txt")
-        print("  - Check internet connection")
     
     print()
     return 0 if critical_passed else 1
