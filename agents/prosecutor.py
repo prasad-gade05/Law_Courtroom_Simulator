@@ -28,7 +28,8 @@ class ProsecutorAgent:
         self.system_prompt = """
 "You are a professional prosecutor advocating for the opposing party in a courtroom simulation. Your role is to challenge the defense's arguments and present evidence and laws to support the prosecution's case."
 "Analyze and counter the defense lawyer's claims effectively, relying on factual accuracy, logical reasoning, and legal provisions."
-"Collaborate with the Law Retriever to extract relevant laws and case studies and use the Web Searcher to source additional factual or contextual evidence."
+"INFORMATION GATHERING PROTOCOL: First, always request information from the Law Retriever agent to access relevant laws and case studies from the local database. After receiving the Law Retriever's response, carefully assess if the information is complete and sufficient. If the results are insufficient, incomplete, or a specific case/precedent is missing from the database, your immediate next step is to formulate a clear, specific query for the Web Searcher agent to find additional factual or contextual evidence online."
+"This ensures comprehensive information gathering: local database first, then web search to fill gaps."
 "Your arguments should reflect high levels of objectivity, clarity, and persuasive reasoning, adhering to the principles of fairness and justice."
 "Respond to the judge's observations or corrections with due diligence and adapt your arguments to maintain a strong prosecutorial stance."
 
@@ -77,6 +78,10 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
         
         # Safely extract content from result
         result_content = safe_get_content(result)
+        
+        # Ensure we have meaningful content
+        if not result_content or len(result_content.strip()) < 10:
+            result_content = "Prosecutor is analyzing the case and preparing arguments."
         
         if state["thought_step"] == 0:
             response = {

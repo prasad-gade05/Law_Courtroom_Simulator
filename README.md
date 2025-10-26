@@ -1,16 +1,17 @@
 # PathRAG Court Simulator ⚖️
 
-An AI-powered legal courtroom simulator using multi-agent orchestration and Google Gemini AI. Experience realistic trial proceedings with intelligent agents representing judges, lawyers, and prosecutors.
+An AI-powered legal courtroom simulator using multi-agent orchestration with LangGraph. Experience realistic trial proceedings with intelligent agents representing judges, lawyers, and prosecutors debating real legal cases.
 
 ## Features
 
-- **Multi-Agent System** - Judge, Defense Lawyer, Prosecutor, Legal Researcher, and Web Searcher working together
-- **Fast & Efficient** - Google Gemini 2.5 Flash provides quick responses (~5-8 minutes per trial)
-- **Cloud-Based** - No GPU required, runs entirely on cloud infrastructure
+- **Multi-Agent System** - Judge, Defense Lawyer, Prosecutor, Legal Researcher, Kanoon Fetcher, and Web Searcher working together
+- **Local & Cloud Options** - Works with Ollama (local LLM) or Google Gemini AI
+- **Robust Workflow** - LangGraph-based orchestration ensures guaranteed verdict delivery
 - **RAG Integration** - Retrieval-Augmented Generation for accurate legal research
 - **Real-Time Streaming** - Watch the trial unfold with live updates
 - **Fair Proceedings** - Both prosecution and defense get equal speaking opportunities
-- **Guaranteed Verdict** - Maximum 25 iterations with forced verdict delivery
+- **Guaranteed Verdict** - Multi-layer safety mechanisms ensure verdict is always delivered (max 40 iterations)
+- **Smart Debating** - Automatic debate conclusion when arguments are exhausted
 
 ---
 
@@ -20,11 +21,17 @@ An AI-powered legal courtroom simulator using multi-agent orchestration and Goog
 
 Before you begin, ensure you have:
 
-- **Windows 10/11** (or Linux/macOS with minor script adjustments)
+- **Windows 10/11, Linux, or macOS**
 - **Python 3.9 or higher** - [Download Python](https://www.python.org/downloads/)
-- **Google AI API Key** (free) - [Get API Key](https://aistudio.google.com/app/apikey)
+- **LLM Setup (Choose one)**:
+  - **Option A**: Ollama with a compatible model (local, recommended)
+    ```bash
+    # Install Ollama from https://ollama.ai/
+    ollama pull llama3:8b  # or your preferred model
+    ```
+  - **Option B**: Google AI API Key (free) - [Get API Key](https://aistudio.google.com/app/apikey)
 - **8+ GB RAM** (16 GB recommended)
-- **Internet connection** (required for cloud API)
+- **Internet connection** (required for APIs and legal data retrieval)
 
 ### Step 1: Clone the Repository
 
@@ -57,49 +64,50 @@ pip install -r requirements.txt
 
 This will install:
 
-- FastAPI (API framework)
-- LangChain (LLM orchestration)
-- LangGraph (Agent workflow)
-- Google Generative AI (Gemini)
-- ChromaDB (Vector database)
-- Streamlit (Web UI)
+- **FastAPI** - API framework
+- **LangChain & LangGraph** - Multi-agent orchestration
+- **LangChain Google GenAI** - Google Gemini integration
+- **LangChain Ollama** - Local LLM support
+- **ChromaDB** - Vector database
+- **Streamlit** - Web UI
+- **CrewAI** - Web search capabilities
+- **Rich** - Terminal formatting
 - And other required packages
 
-### Step 4: Configure API Key
+### Step 4: Configure Environment
 
-1. **Get your Google AI API key:**
+**Create environment file:**
 
-   - Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-   - Sign in with your Google account
-   - Click "Create API Key"
-   - Copy the key (format: `AIzaSy...`)
+```bash
+# Windows
+copy .env.example .env
 
-2. **Create environment file:**
+# Linux/macOS
+cp .env.example .env
+```
 
-   ```bash
-   # Windows
-   copy .env.example .env
+**Configure your LLM:**
 
-   # Linux/macOS
-   cp .env.example .env
-   ```
+Choose ONE of the following options:
 
-3. **Add your API key:**
+**Option A - Ollama (Local, Recommended):**
+```env
+OLLAMA_MODEL=llama3:8b
+# Or: gpt-oss:120b-cloud, mistral:7b, etc.
+```
 
-   Open `.env` in a text editor and add:
+**Option B - Google Gemini:**
+```env
+GOOGLE_API_KEY=YOUR_GOOGLE_API_KEY
+GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_EMBEDDING_MODEL=text-embedding-004
+```
 
-   ```env
-
-    GOOGLE_API_KEY=YOUR_API_KEY
-
-    GEMINI_MODEL=gemini-2.5-flash-lite
-    GEMINI_EMBEDDING_MODEL=text-embedding-004
-
-
-    SERPER_API_KEY=YOUR_API_KEY
-    KANOON_API_KEY=YOUR_API_KEY
-
-   ```
+**Optional - Additional APIs:**
+```env
+SERPER_API_KEY=YOUR_SERPER_KEY       # For web search (optional)
+KANOON_API_KEY=YOUR_KANOON_KEY       # For Indian case law (optional)
+```
 
 ### Step 5: Verify Setup
 
@@ -283,19 +291,32 @@ Inter-IIT-Pathway-PathRAG-Court-Simulator/
 
 ### Environment Variables
 
-Edit `.env` file:
+Edit `.env` file based on your chosen LLM:
 
 ```env
-# Required
-GOOGLE_API_KEY=your_api_key_here
+# For Ollama (Local)
+OLLAMA_MODEL=llama3:8b
 
-# Model Selection
+# OR For Google Gemini
+GOOGLE_API_KEY=your_google_api_key
 GEMINI_MODEL=gemini-2.5-flash-lite
+GEMINI_EMBEDDING_MODEL=text-embedding-004
 
-# External APIs
-SERPER_API_KEY=YOUR_KEY                      # For web search
-KANOON_API_KEY=YOUR_KEY                      # For Indian case law
+# Optional APIs
+SERPER_API_KEY=your_serper_key       # For web search
+KANOON_API_KEY=your_kanoon_key       # For Indian case law
 ```
+
+### Verdict Guarantee Mechanism
+
+The simulator uses multiple safety layers to ensure a verdict is always delivered:
+
+1. **Iteration 16**: Router starts winding down debate
+2. **Iteration 18**: Judge automatically forces verdict (normal path)
+3. **Iteration 22**: Emergency verdict safety net (if needed)
+4. **Fallback**: LLM-based analysis verdict if all else fails
+
+This ensures you'll **always** get a verdict, even if the workflow encounters issues.
 
 ## How It Works
 
@@ -323,12 +344,49 @@ KANOON_API_KEY=YOUR_KEY                      # For Indian case law
 
 ### Key Agents
 
-- **👨‍⚖️ Judge** - Controls trial flow, evaluates arguments, delivers verdict
-- **🛡️ Defense Lawyer** - Builds defense, finds weaknesses in prosecution
-- **⚔️ Prosecutor** - Presents charges, challenges defense claims
-- **📚 Legal Retriever** - Searches legal documents and precedents
+- **👨‍⚖️ Judge** - Controls trial flow, evaluates arguments, ensures fair proceedings, delivers verdict
+- **🛡️ Defense Lawyer** - Builds defense arguments, challenges prosecution, cites legal precedents
+- **⚔️ Prosecutor** - Presents charges, builds case against defendant, rebuts defense claims
+- **📚 Legal Retriever** - Searches ChromaDB vector database for relevant legal documents
 - **🔍 Kanoon Fetcher** - Finds similar cases from Indian Kanoon database
-- **🌐 Web Searcher** - Searches internet for additional legal information
+- **🌐 Web Searcher** - Searches internet for additional legal information and precedents
+- **🏛️ Verdict Agent** - Generates final verdict based on complete trial transcript
+
+### Technologies Used
+
+- **LangGraph** - Multi-agent workflow orchestration
+- **LangChain** - LLM abstraction and tooling
+- **ChromaDB** - Vector database for legal document storage
+- **FastAPI** - REST API backend
+- **Streamlit** - Web-based user interface
+- **CrewAI** - Agent framework for web search
+- **Ollama/Google Gemini** - Large language models
+
+---
+
+## Troubleshooting
+
+### Issue: "Recursion limit reached"
+
+**Solution**: The simulator has built-in safety mechanisms. If you see this error, the emergency verdict should have been delivered. Check the last output messages for the verdict.
+
+### Issue: "Ollama connection failed"
+
+**Solution**: Ensure Ollama is installed and running:
+```bash
+# Start Ollama service
+ollama serve
+
+# Test connection
+ollama list
+```
+
+### Issue: "No verdict displayed"
+
+**Solution**: The verdict is guaranteed to be delivered. Check:
+1. Look for "🏛️ FINAL VERDICT" header in output
+2. Check for "VERDICT DELIVERED:" in the message
+3. Verdict is shown at iteration 18-22 range
 
 ---
 

@@ -1,7 +1,12 @@
+# --- MODIFIED app.py ---
+
 from core.workflow import TrialWorkflow
 from agents import LawyerAgent, ProsecutorAgent, JudgeAgent, RetrieverAgent, FetchingAgent, WebSearcherAgent
 import asyncio
-from langchain_google_genai import ChatGoogleGenerativeAI
+# --- CHANGE START ---
+# from langchain_google_genai import ChatGoogleGenerativeAI # No longer needed
+from langchain_ollama import OllamaLLM
+# --- CHANGE END ---
 import os
 from fastapi import FastAPI, Body
 from fastapi.responses import StreamingResponse
@@ -14,61 +19,38 @@ load_dotenv()
 # Initialize FastAPI app
 app = FastAPI()
 
-# Initialize Google Gemini LLMs (Cloud-based, fast, cost-effective)
-# Get API key from environment
-google_api_key = os.getenv("GOOGLE_API_KEY")
-if not google_api_key:
-    raise ValueError("GOOGLE_API_KEY not found in environment variables. Please set it in .env file")
+# --- CHANGE START ---
+# Replace the entire Google Gemini LLM initialization block with the Ollama setup.
 
-gemini_model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+ollama_model = os.getenv("OLLAMA_MODEL", "gpt-oss:120b-cloud")
 
 print("="*80)
-print("GOOGLE GEMINI LLM INITIALIZATION")
+print("LOCAL OLLAMA LLM INITIALIZATION")
 print("="*80)
-print(f"Model: {gemini_model}")
-print(f"API Key: {'*' * 20}{google_api_key[-4:] if len(google_api_key) > 4 else '****'}")
-print("Cloud-based inference - No local GPU required")
-print("Expected performance: <5 minutes per workflow (10x faster than local)")
+print(f"Model: {ollama_model}")
+print("Local inference - All processing is done on your machine.")
 print("="*80)
 
-# Primary LLM for general use
+# Primary LLM for all agents (simpler and more consistent)
 try:
-    llm_0 = ChatGoogleGenerativeAI(
-        model=gemini_model,
-        google_api_key=google_api_key,
-        temperature=0.7,
-        convert_system_to_human=True  # Important for Gemini compatibility
-    )
-    print("Primary LLM initialized successfully")
+    llm = OllamaLLM(model=ollama_model, stop=["\nObservation:"])
+    # Perform a quick test to ensure Ollama server is running
+    llm.invoke("test") 
+    print("Primary LLM initialized and connected to Ollama server successfully")
 except Exception as e:
-    print(f"ERROR: Failed to initialize Gemini LLM: {e}")
+    print(f"ERROR: Failed to initialize or connect to Ollama: {e}")
+    print("Please ensure the Ollama application is running and you have pulled the model (e.g., 'ollama run llama3:8b')")
     raise
 
-# Multiple LLM instances for different agents (using same model for consistency)
-# Note: Gemini is highly reliable, so we use same model with retry logic instead of fallbacks
-llms = [
-    ChatGoogleGenerativeAI(
-        model=gemini_model,
-        google_api_key=google_api_key,
-        temperature=0.7,
-        convert_system_to_human=True
-    ),
-    ChatGoogleGenerativeAI(
-        model=gemini_model,
-        google_api_key=google_api_key,
-        temperature=0.8,
-        convert_system_to_human=True
-    ),
-    ChatGoogleGenerativeAI(
-        model=gemini_model,
-        google_api_key=google_api_key,
-        temperature=0.6,
-        convert_system_to_human=True
-    ),
-]
+# We will use the same LLM instance for all agents for consistency
+llms = [llm, llm, llm]
+llm_0 = llm
 
-print(f"Fallback LLM instances created: {len(llms)}")
+print(f"LLM instances created for all agents")
 print("="*80)
+
+# --- CHANGE END ---
+
 
 # Initialize Workflow
 print("\nWORKFLOW INITIALIZATION")
@@ -88,6 +70,7 @@ workflow = TrialWorkflow(
     retriever=RetrieverAgent(llms=llms),
     kanoon_fetcher=FetchingAgent(llms=llms),
     web_searcher=WebSearcherAgent(llm=llm_0),
+    llms=llms  # Add llms parameter for VerdictAgent
 )
 
 print("All agents initialized successfully")

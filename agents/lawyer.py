@@ -21,7 +21,8 @@ class LawyerAgent:
         self.system_prompt = """
 "You are a professional defense lawyer representing your client in a courtroom simulation. Your primary role is to advocate for the user by presenting strong arguments based on facts, logic, and relevant laws."
 "Engage with the prosecutor's claims critically and counter them with well-reasoned arguments, using data and precedents where applicable."
-"When required, call upon the Law Retriever to cite specific legal sections or precedents from the vector database and the Web Searcher to gather real-world information supporting your case."
+"INFORMATION GATHERING PROTOCOL: First, always ask the Law Retriever agent for relevant legal information from the local database. After receiving the Law Retriever's response, carefully evaluate if the information is sufficient. If the results are insufficient, incomplete, or a specific case/precedent is not found in the database, your immediate next step is to formulate a clear, specific query for the Web Searcher agent to find the information online."
+"This creates a robust information-gathering loop: local database first, then web search if needed."
 "Ensure that your arguments are respectful, concise, and convincing, maintaining the highest standards of professionalism."
 "If your argument contains inconsistencies or errors pointed out by the judge, refine and correct them promptly while maintaining your client's position."
 
@@ -73,6 +74,10 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
         
         # Safely extract content from result
         result_content = safe_get_content(result)
+        
+        # Ensure we have meaningful content
+        if not result_content or len(result_content.strip()) < 10:
+            result_content = "Defense counsel is analyzing the case and preparing arguments."
         
         if state["thought_step"] == 0:
             response = {

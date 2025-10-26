@@ -59,4 +59,11 @@ logs/
 
 # Temporary files
 *.tmp
-temp/ 
+temp/
+
+# Analysis documents
+VERDICT_*.md
+COMPARISON_ANALYSIS.md
+FINAL_VERDICT_ANALYSIS.md
+VERDICT_ISSUE_AND_FIX.md
+VERDICT_V2_COMPREHENSIVE_ANALYSIS.md 

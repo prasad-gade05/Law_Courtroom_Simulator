@@ -1,10 +1,15 @@
+# --- MODIFIED core/chroma_store.py ---
+
 """
-ChromaDB Vector Store - Cloud-ready with Google Gemini embeddings
+ChromaDB Vector Store - Local-ready with Ollama embeddings
 """
 import chromadb
 from chromadb.config import Settings
 from langchain_community.vectorstores import Chroma
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+# --- CHANGE START ---
+# from langchain_google_genai import GoogleGenerativeAIEmbeddings # No longer needed
+from langchain_community.embeddings import OllamaEmbeddings # Import Ollama embeddings
+# --- CHANGE END ---
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pathlib import Path
 import time
@@ -17,13 +22,12 @@ load_dotenv()
 
 class ChromaVectorStore:
     """
-    Vector store using ChromaDB with Google Gemini embeddings.
-    Cloud-based embeddings for better performance and no local GPU requirement.
+    Vector store using ChromaDB with local Ollama embeddings.
     
     Parameters:
         name: Name for the database collection (e.g., 'public', 'private')
         path: Path to directory containing documents to index
-        embedding_model: Google embedding model name (default: 'models/text-embedding-004')
+        embedding_model: Ollama embedding model name (default: 'nomic-embed-text')
     """
     
     def __init__(
@@ -36,14 +40,12 @@ class ChromaVectorStore:
         self.name = name
         self.path = path
         
-        # Get embedding model from env or use default
+        # --- CHANGE START ---
+        # Get embedding model from env or use new default for Ollama
         if embedding_model is None:
-            embedding_model = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
+            embedding_model = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
         self.embedding_model = embedding_model
-        
-        # Ensure model name doesn't have models/ prefix (LiteLLM compatibility)
-        if self.embedding_model.startswith("models/"):
-            self.embedding_model = self.embedding_model.replace("models/", "")
+        # --- CHANGE END ---
         
         # Set persistence directory
         if persist_directory is None:
@@ -62,20 +64,12 @@ class ChromaVectorStore:
         print()
         
         try:
-            # Initialize Google Gemini embeddings
-            print(f"Initializing Google Gemini embeddings...", end='', flush=True)
-            google_api_key = os.getenv("GOOGLE_API_KEY")
-            if not google_api_key:
-                raise ValueError("GOOGLE_API_KEY not found in environment variables")
-            
-            # GoogleGenerativeAIEmbeddings expects models/ prefix
-            embedding_model_with_prefix = f"models/{self.embedding_model}" if not self.embedding_model.startswith("models/") else self.embedding_model
-            
-            self.embeddings = GoogleGenerativeAIEmbeddings(
-                model=embedding_model_with_prefix,
-                google_api_key=google_api_key
-            )
+            # --- CHANGE START ---
+            # Initialize Ollama embeddings
+            print(f"Initializing Ollama embeddings...", end='', flush=True)
+            self.embeddings = OllamaEmbeddings(model=self.embedding_model)
             print(" [OK]")
+            # --- CHANGE END ---
             
             # Initialize text splitter
             print(f"Initializing text splitter (chunk_size=5000)...", end='', flush=True)
@@ -126,7 +120,7 @@ class ChromaVectorStore:
             
         except Exception as e:
             raise RuntimeError(f"Failed to initialize ChromaVectorStore: {str(e)}")
-    
+
     def _index_documents(self):
         """
         Index all documents from the specified path into ChromaDB.
@@ -200,7 +194,9 @@ class ChromaVectorStore:
         if all_texts:
             print("\n" + "=" * 60)
             print(f"Generating embeddings and indexing {len(all_texts)} chunks...")
-            print(f"   Using Google Gemini API (cloud-based)")
+            # --- CHANGE START ---
+            print(f"   Using local Ollama embeddings ({self.embedding_model})")
+            # --- CHANGE END ---
             print(f"   This may take a few minutes...")
             print(f"   Progress: ", end='', flush=True)
             
@@ -233,7 +229,9 @@ class ChromaVectorStore:
             print("=" * 60)
         else:
             print("\n[WARNING] No text content extracted from documents.")
-    
+
+    # ... (the rest of the file remains the same) ...
+
     def _extract_text(self, file_path: Path) -> str:
         """
         Extract text from various file formats.

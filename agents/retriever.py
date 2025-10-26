@@ -75,47 +75,68 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
     async def process(self, state: AgentState) -> AgentState:
         """Process current state with retriever-specific logic"""
         
-        messages = [
-            {"role": "system", "content": self.system_prompt + f"\n'current_task': {self.get_thought_steps()[0]}"}
-        ] + state["messages"]
+        try:
+            messages = [
+                {"role": "system", "content": self.system_prompt + f"\n'current_task': {self.get_thought_steps()[0]}"}
+            ] + state["messages"]
 
-        # info_analysis = self.llm.invoke(messages)
-
-        for i,llm in enumerate(self.llms):
-            try:
-                info_analysis = llm.invoke(messages)
-                break
-            except Exception as e:
-                print(f"LLM {i} failed with error: {e}")
-                continue
-
+            # Step 1: Analyze the request
+            info_analysis = None
+            for i, llm in enumerate(self.llms):
+                try:
+                    info_analysis = llm.invoke(messages)
+                    break
+                except Exception as e:
+                    print(f"LLM {i} failed with error: {e}")
+                    continue
             
-        for i in range(1): # max 5 iterations
-            #formulate query
-            # Use safe_get_content for info_analysis
+            if info_analysis is None:
+                return self._create_error_response(state, "Failed to analyze request")
+
+            # Step 2: Formulate queries
             info_analysis_content = safe_get_content(info_analysis)
             messages.append({"role": "system", "content": "need_info: " + info_analysis_content + "\n" + "current_task: " + self.get_thought_steps()[1]})
-            # queries = self.llm.with_structured_output(Queries).invoke(messages)
-            for i,llm in enumerate(self.llms):
+            
+            private_query = None
+            public_query = None
+            for i, llm in enumerate(self.llms):
                 try:
                     private_query = llm.invoke(messages)
                     public_query = llm.invoke(messages)
                     break
                 except Exception as e:
                     print(f"LLM {i} failed with error: {e}")
+                    continue
 
-            #retrieve
-            # Use safe_get_content for queries
+            if private_query is None or public_query is None:
+                return self._create_error_response(state, "Failed to formulate queries")
+
+            # Step 3: Retrieve content
             private_query_content = safe_get_content(private_query)
             public_query_content = safe_get_content(public_query)
             
-            private_retrieved_content = self.private_retriever.invoke(private_query_content) if private_query_content.lower() != 'none' else 'None'
-            public_retrieved_content = self.public_retriever.invoke(public_query_content) if public_query_content.lower() != 'none' else 'None'
+            private_retrieved_content = "None"
+            public_retrieved_content = "None"
+            
+            try:
+                if private_query_content.lower() != 'none':
+                    private_retrieved_content = self.private_retriever.invoke(private_query_content)
+            except Exception as e:
+                print(f"Private retriever failed: {e}")
+                private_retrieved_content = "Error retrieving private documents"
+            
+            try:
+                if public_query_content.lower() != 'none':
+                    public_retrieved_content = self.public_retriever.invoke(public_query_content)
+            except Exception as e:
+                print(f"Public retriever failed: {e}")
+                public_retrieved_content = "Error retrieving public documents"
 
-            #assess
+            # Step 4: Assess results
             messages.append({"role": "system", "content": "private_retrieved_content: " + str(private_retrieved_content) + "\npublic_retrieved_content: " + str(public_retrieved_content) + "\ncurrent_task: " + self.get_thought_steps()[2]})
-            # assessment = self.llm.with_structured_output(RetrieverResponse).invoke(messages)
-            for i,llm in enumerate(self.llms):
+            
+            assessment = None
+            for i, llm in enumerate(self.llms):
                 try:
                     assessment = llm.invoke(messages)
                     break
@@ -123,39 +144,47 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
                     print(f"LLM {i} failed with error: {e}")
                     continue
 
-            #continue
-            # Use safe_get_content helper
-            assessment_content = safe_get_content(assessment)
-            
-            if not re.search(r"not_enough", assessment_content, re.IGNORECASE):
-                break
+            if assessment is None:
+                return self._create_error_response(state, "Failed to assess results")
 
-                
+            # Step 5: Provide final response
+            messages.append({"role": "system", "content": "private_retrieved_content: " + str(private_retrieved_content) + "\npublic_retrieved_content: " + str(public_retrieved_content) + "\ncurrent_task: " + self.get_thought_steps()[3]})
             
-        
-        messages.append({"role": "system", "content": "private_retrieved_content: " + str(private_retrieved_content) + "\npublic_retrieved_content: " + str(public_retrieved_content) + "\ncurrent_task: " + self.get_thought_steps()[3]})
-        # result = self.llm.invoke(messages)
-        for i,llm in enumerate(self.llms):
-            try:
-                result = llm.invoke(messages)
-                break
-            except Exception as e:
-                print(f"LLM {i} failed with error: {e}")
-                continue
+            result = None
+            for i, llm in enumerate(self.llms):
+                try:
+                    result = llm.invoke(messages)
+                    break
+                except Exception as e:
+                    print(f"LLM {i} failed with error: {e}")
+                    continue
 
-        
-        # Use safe_get_content helper
-        result_content = safe_get_content(result)
-        
-        response = {
-            "messages": [HumanMessage(content=result_content, name="retriever")],
+            if result is None:
+                return self._create_error_response(state, "Failed to generate final response")
+
+            result_content = safe_get_content(result)
+            
+            response = {
+                "messages": [HumanMessage(content=result_content, name="retriever")],
+                "next": state["caller"],
+                "thought_step": state["thought_step"],
+                "caller": "retriever"
+            }
+            
+            return response
+            
+        except Exception as e:
+            print(f"RetrieverAgent process failed: {e}")
+            return self._create_error_response(state, f"Retriever error: {str(e)}")
+    
+    def _create_error_response(self, state: AgentState, error_message: str) -> AgentState:
+        """Create error response when retrieval fails"""
+        return {
+            "messages": [HumanMessage(content=f"Retrieval failed: {error_message}. Proceeding with available information.", name="retriever")],
             "next": state["caller"],
             "thought_step": state["thought_step"],
             "caller": "retriever"
         }
-   
-            
-        return response
     
                     
         

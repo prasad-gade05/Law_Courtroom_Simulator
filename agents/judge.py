@@ -27,27 +27,32 @@ class JudgeAgent:
         # Comprehensive system prompt defining the judge's role and responsibilities
         self.system_prompt = """
 "You are a presiding judge overseeing a courtroom simulation. Your primary role is to evaluate the arguments presented by the lawyer and prosecutor for logical consistency, factual accuracy, and adherence to legal principles."
-"Point out inconsistencies, hallucinations, or errors in the agents' arguments and provide constructive feedback to help refine them."
-"Call upon the Law Retriever and Web Searcher agents as necessary to verify or clarify legal and factual claims made during the arguments."
-"Monitor the proceedings and identify when sufficient arguments have been presented and the case is ready for a verdict."
-"CRITICAL: Ensure BOTH sides (lawyer AND prosecutor) have equal opportunity to present their case. You MUST alternate between them."
-"When deciding next speaker, check who spoke last in the message history and give the OTHER party a turn."
-"Summarize the case before delivering a verdict, outlining the key points of contention and the reasoning behind your decision."
-"Your decisions and comments should be impartial, grounded in logic, and aimed at maintaining the integrity of the courtroom process."
 
-IMPORTANT INSTRUCTIONS:
-1. When ready for verdict, start your response with "VERDICT DELIVERED:"
-2. When continuing trial, end your response with "NEXT SPEAKER: lawyer" or "NEXT SPEAKER: prosecutor"
-3. Always use the exact format "NEXT SPEAKER: [lawyer/prosecutor]" so routing is clear
-4. Do NOT say things like "the next speaker should be" - use the exact format above
+CRITICAL JUDGE RULES:
+1. You are NOT a researcher - you do NOT request legal data or web searches
+2. You evaluate arguments based on your existing legal knowledge
+3. You point out inconsistencies, hallucinations, or errors in the agents' arguments
+4. You provide constructive feedback to help refine arguments
+5. You monitor proceedings and identify when sufficient arguments have been presented
+6. You ensure BOTH sides (lawyer AND prosecutor) have equal opportunity to present their case
+7. You alternate between them fairly based on who spoke last
+8. You have the authority to conclude the trial when both sides have fully presented their case
 
-you will go through the following chain of thought steps:
-1. Review arguments
-2. legal data retrieval
-3. web search (if needed) 
-4. verdict OR route to next speaker
+NATURAL TRIAL CONCLUSION - YOUR KEY RESPONSIBILITY:
+- Actively monitor if both sides are starting to repeat themselves or have exhausted their arguments
+- Look for signs that the debate has reached a natural conclusion (e.g., "I rest my case", "no further arguments", repetitive points)
+- If you believe both sides have fully presented their case and further debate would be unproductive, you have the AUTHORITY and RESPONSIBILITY to conclude the debate
+- When ready to conclude, respond with: "Both sides have presented comprehensive arguments. The court is ready to proceed to verdict. NEXT: verdict"
+- You do NOT need to wait for a specific iteration count - trust your judgment as a judge
 
-Do ONLY 'current_task', other tasks will be done in next steps or by other agents. Avoid very long responses.
+ROUTING INSTRUCTIONS:
+- When continuing trial, end with "NEXT SPEAKER: lawyer" or "NEXT SPEAKER: prosecutor"  
+- When you determine the debate has naturally concluded, end with "NEXT: verdict"
+- Check message history to see who spoke last and give the OTHER party a turn
+- Use exact format "NEXT SPEAKER: [lawyer/prosecutor]" or "NEXT: verdict" for clear routing
+- BE DECISIVE: If you sense the trial has run its natural course, conclude it confidently
+
+Do NOT request information from retriever or web searcher agents. Evaluate based on existing knowledge.
 """
 
     def get_thought_steps(self) -> List[str]:
@@ -56,21 +61,24 @@ Do ONLY 'current_task', other tasks will be done in next steps or by other agent
         Each step represents a specific phase of analysis and action.
         """
         return [
-            "1. Listen to the arguments presented by both the lawyer and prosecutor. Note their key points and claims. Identify potential hallucinations or logical errors or factual errors in latest argument.",
-            "2. Determine the specific legal data (e.g., laws, IPCs, legal case precedents) required for cross verificaton of identified errors. Clearly ask the law retriever agent for the necessary legal data.",
-            "3. Evaluate if additional web-based information is needed. If yes, ask the web searcher agent with specific details. If not, reply only with the keyword 'none.'",
+            "1. Review the arguments presented by both the lawyer and prosecutor. Note their key points and claims. Identify potential hallucinations, logical errors, or factual errors in the latest argument.",
+            "2. Evaluate the arguments based on your legal knowledge. Do NOT request additional information. Assess the strength of each side's case and identify any weaknesses or inconsistencies.",
+            "3. Determine if the case is ready for verdict phase. Consider: Have both sides made substantial arguments? Are they starting to repeat themselves? Have key legal points been addressed? If the debate feels complete and natural, route to verdict by saying 'NEXT: verdict'. If more discussion is needed, provide brief feedback and determine next speaker.",
             """4. Make final decision for this turn:
-            A) VERDICT PATH - If ready for verdict (6+ arguments from each side OR iteration >= 20):
-               - IMMEDIATELY deliver verdict starting with exact keyphrase "VERDICT DELIVERED:"
-               - Summarize case and state guilty or not guilty
+            A) VERDICT PATH - If the debate has reached its natural conclusion:
+               - Both sides have presented comprehensive arguments
+               - Arguments are becoming repetitive or no new substantial points are being made
+               - Key legal issues have been thoroughly addressed
+               - You sense the trial has run its natural course
+               - Say "Both sides have presented their arguments comprehensively. NEXT: verdict" to route to final verdict phase
                
-            B) CONTINUE TRIAL PATH - If NOT ready for verdict:
+            B) CONTINUE TRIAL PATH - If more meaningful debate is possible:
                - Provide brief feedback on latest argument
-               - Check message history to see who spoke last
-               - Respond with ONLY ONE KEYWORD at the end: "lawyer" (if prosecutor spoke last) OR "prosecutor" (if lawyer spoke last)
+               - Check message history to see who spoke last  
+               - Respond with: [Your feedback here]. NEXT SPEAKER: [lawyer/prosecutor]
                - Format: [Your feedback here]. NEXT SPEAKER: lawyer
             
-            Be clear and decisive. Do not be ambiguous."""
+            Be decisive and trust your judicial instincts. A good judge knows when a case has been fully argued."""
         ]
 
     async def process(self, state: AgentState) -> AgentState:
@@ -123,8 +131,12 @@ Do ONLY 'current_task', other tasks will be done in next steps or by other agent
         # Safely extract content from result
         result_content = safe_get_content(result)
         
-        if state["thought_step"] == 0 or state["thought_step"] == 2:
-            # Initial review or post-web search steps
+        # Ensure we have meaningful content
+        if not result_content or len(result_content.strip()) < 10:
+            result_content = "The court is reviewing the arguments and will provide guidance."
+        
+        if state["thought_step"] == 0:
+            # Initial review step
             response = {
                 "messages": [HumanMessage(content=result_content, name="judge")],
                 "next": "self",
@@ -132,11 +144,19 @@ Do ONLY 'current_task', other tasks will be done in next steps or by other agent
                 "caller": "judge"
             }
         elif state["thought_step"] == 1:
-            # Legal data retrieval step
+            # Evaluation step
             response = {
-                "messages": [HumanMessage(content=result_content, name="judge") ],
-                "next": self.determine_after_legal_data(result_content),
-                "thought_step": 2 if self.determine_after_legal_data(result_content) == "retriever" else 3,
+                "messages": [HumanMessage(content=result_content, name="judge")],
+                "next": "self",
+                "thought_step": state["thought_step"]+1,
+                "caller": "judge"
+            }
+        elif state["thought_step"] == 2:
+            # Decision step
+            response = {
+                "messages": [HumanMessage(content=result_content, name="judge")],
+                "next": "self",
+                "thought_step": state["thought_step"]+1,
                 "caller": "judge"
             }
         elif state["thought_step"] == 3:
@@ -163,42 +183,29 @@ Do ONLY 'current_task', other tasks will be done in next steps or by other agent
 
         return response
     
-    def determine_after_legal_data(self, content: str) -> Literal["self", "retriever"]:
-        """
-        Determines if legal data retrieval is needed based on the content.
-        Returns 'retriever' if needed, 'self' otherwise.
-        """
-        if "none" in content.lower() or "no legal data" in content.lower():
-            return "self"
-        else:
-            return "retriever"
     
-    def is_web_search_needed(self, content: str) -> Literal["self", "web_searcher"]:
-        """
-        Determines if web search is needed based on the content.
-        Returns 'self' if no search needed, 'web_searcher' otherwise.
-        """
-        if "none" in content.lower():
-            return "self"
-        else:
-            return "web_searcher"
-    
-    def extract_next_speaker(self, content: str, state: AgentState) -> Literal["lawyer", "prosecutor", "END"]:
+    def extract_next_speaker(self, content: str, state: AgentState) -> Literal["lawyer", "prosecutor", "verdict", "END"]:
         """
         Extract the next speaker from judge's response.
         Handles multiple formats:
         - "NEXT SPEAKER: lawyer"
+        - "NEXT: verdict"
         - "The next speaker should be the lawyer"
         - "lawyer" (keyword)
         Also checks iteration count as failsafe.
         """
         content_lower = content.lower()
         
-        # Check iteration count as failsafe for termination
+        # Check for verdict routing
+        if "next: verdict" in content_lower or "route to verdict" in content_lower or "verdict phase" in content_lower:
+            print(f"[JUDGE] Routing to verdict phase")
+            return "verdict"
+        
+        # Check iteration count as failsafe for termination - IMPROVED LOGIC
         iteration = state.get("iteration_count", 0)
-        if iteration >= 24:
-            print(f"[JUDGE] Iteration {iteration} >= 24, forcing END")
-            return "END"
+        if iteration >= 18:  # Start forcing verdict earlier to avoid recursion limit
+            print(f"[JUDGE] Iteration {iteration} >= 18, forcing verdict to prevent recursion limit")
+            return "verdict"
         
         # Look for explicit patterns
         if "next speaker:" in content_lower:

@@ -1,0 +1,43 @@
+{
+    "tid": 41095867,
+    "publishdate": "1860-10-06",
+    "title": "Section 323 in The Indian Penal Code, 1860",
+    "doc": "<h2 class=\"doc_title\">Section 323 in The Indian Penal Code, 1860</h2>\n\n<section class=\"akn-section\" id=\"section_323\"><h3>323. Punishment for voluntarily causing hurt.\u2014</h3>\n<span class=\"akn-content\"><span class=\"akn-p\">Whoever, except in the case provided for by section 334, voluntarily causes hurt, shall be punished with imprisonment of either description for a term which may extend to one year, or with fine which may extend to one thousand rupees, or with both.</span></span></section>",
+    "numcites": 0,
+    "numcitedby": 555422,
+    "docid": 41095867,
+    "docsource": "Union of India - Section",
+    "covers": [
+        {
+            "tid": 1569253,
+            "title": "Entire Act"
+        }
+    ],
+    "citetid": 1011035,
+    "divtype": "akoma-ntoso",
+    "courtcopy": false,
+    "query_alert": null,
+    "agreement": false
+}
+
+{
+    "tid": 18565768,
+    "publishdate": "1860-10-06",
+    "title": "Section 34 in The Indian Penal Code, 1860",
+    "doc": "<h2 class=\"doc_title\">Section 34 in The Indian Penal Code, 1860</h2>\n\n<section class=\"akn-section\" id=\"section_34\"><h3>34. Acts done by several persons in furtherance of common intention.\u2014</h3>\n<span class=\"akn-content\"><span class=\"akn-p\">When a criminal act is done by several persons in furtherance of the common intention of all, each of such persons is liable for that act in the same manner as if it were done by him alone.</span></span></section>",
+    "numcites": 0,
+    "numcitedby": 748445,
+    "docid": 18565768,
+    "docsource": "Union of India - Section",
+    "covers": [
+        {
+            "tid": 1569253,
+            "title": "Entire Act"
+        }
+    ],
+    "citetid": 37788,
+    "divtype": "akoma-ntoso",
+    "courtcopy": false,
+    "query_alert": null,
+    "agreement": false
+}

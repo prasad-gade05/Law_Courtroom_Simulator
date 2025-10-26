@@ -210,73 +210,73 @@ class FetchingAgent:
         print(f"  Total time: {total_time:.1f}s")
         print("-"*80)
 
-        # converting fetched json data from the API to texts, not doing it 
+        # converting fetched json data from the API to texts
         # Path to the 'public' directory
-        # base_path = "public_documents"
+        base_path = "public_documents"
 
-        # # Loop through all unique subfolders, created by the storage utility, in the base directory
-        # for unique_folder in os.listdir(base_path):
-        #     unique_folder_path = os.path.join(base_path, unique_folder)
+        # Loop through all unique subfolders, created by the storage utility, in the base directory
+        for unique_folder in os.listdir(base_path):
+            unique_folder_path = os.path.join(base_path, unique_folder)
             
-        #     # Skip if not a folder
-        #     if not os.path.isdir(unique_folder_path):
-        #         continue
+            # Skip if not a folder
+            if not os.path.isdir(unique_folder_path):
+                continue
             
-        #     # Text content to combine for the current unique folder
-        #     combined_text = []
+            # Text content to combine for the current unique folder
+            combined_text = []
             
-        #     # Traverse the hierarchy within the unique folder
-        #     for court_folder in os.listdir(unique_folder_path):
-        #         court_folder_path = os.path.join(unique_folder_path, court_folder)
+            # Traverse the hierarchy within the unique folder
+            for court_folder in os.listdir(unique_folder_path):
+                court_folder_path = os.path.join(unique_folder_path, court_folder)
                 
-        #         if not os.path.isdir(court_folder_path):
-        #             continue
+                if not os.path.isdir(court_folder_path):
+                    continue
                 
-        #         for year_folder in os.listdir(court_folder_path):
-        #             year_folder_path = os.path.join(court_folder_path, year_folder)
+                for year_folder in os.listdir(court_folder_path):
+                    year_folder_path = os.path.join(court_folder_path, year_folder)
                     
-        #             if not os.path.isdir(year_folder_path):
-        #                 continue
+                    if not os.path.isdir(year_folder_path):
+                        continue
                     
-        #             for date_folder in os.listdir(year_folder_path):
-        #                 date_folder_path = os.path.join(year_folder_path, date_folder)
+                    for date_folder in os.listdir(year_folder_path):
+                        date_folder_path = os.path.join(year_folder_path, date_folder)
                         
-        #                 if not os.path.isdir(date_folder_path):
-        #                     continue
+                        if not os.path.isdir(date_folder_path):
+                            continue
                         
-        #                 # Process each JSON file in the date folder
-        #                 for file_name in os.listdir(date_folder_path):
-        #                     file_path = os.path.join(date_folder_path, file_name)
+                        # Process each JSON file in the date folder
+                        for file_name in os.listdir(date_folder_path):
+                            file_path = os.path.join(date_folder_path, file_name)
                             
-        #                     # Skip if not a JSON file
-        #                     if not file_name.endswith(".json"):
-        #                         continue
+                            # Skip if not a JSON file
+                            if not file_name.endswith(".json"):
+                                continue
                             
-        #                     try:
-        #                         # Load and extract JSON content
-        #                         with open(file_path, "r", encoding="utf-8") as json_file:
-        #                             data = json.load(json_file)
+                            try:
+                                # Load and extract JSON content
+                                with open(file_path, "r", encoding="utf-8") as json_file:
+                                    data = json.load(json_file)
                                     
-        #                             # Convert JSON content to string and append to combined_text
-        #                             combined_text.append(json.dumps(data, indent=4))
-        #                     except Exception as e:
-        #                         print(f"Error processing file {file_path}: {e}")
+                                    # Convert JSON content to string and append to combined_text
+                                    combined_text.append(json.dumps(data, indent=4))
+                            except Exception as e:
+                                print(f"Error processing file {file_path}: {e}")
             
-        #     # Write the combined text to a single file named after the unique folder
-        #     if combined_text:
-        #         output_file_path = os.path.join(base_path, f"{unique_folder}.txt")
-        #         with open(output_file_path, "w", encoding="utf-8") as output_file:
-        #             output_file.write("\n\n".join(combined_text))
-        #         print(f"Created combined text file: {output_file_path}")
+            # Write the combined text to a single file named after the unique folder
+            if combined_text:
+                output_file_path = os.path.join(base_path, f"{unique_folder}.txt")
+                with open(output_file_path, "w", encoding="utf-8") as output_file:
+                    output_file.write("\n\n".join(combined_text))
+                print(f"Created combined text file: {output_file_path}")
 
-        #         # Delete the unique folder after successful processing
-        #         try:
-        #             shutil.rmtree(unique_folder_path)
-        #             print(f"Deleted folder: {unique_folder_path}")
-        #         except Exception as e:
-        #             print(f"Error deleting folder {unique_folder_path}: {e}")
+                # Delete the unique folder after successful processing
+                try:
+                    shutil.rmtree(unique_folder_path)
+                    print(f"Deleted folder: {unique_folder_path}")
+                except Exception as e:
+                    print(f"Error deleting folder {unique_folder_path}: {e}")
 
-        # time.sleep(10)
+        time.sleep(10)
         
         # Return state to continue workflow
         from langchain_core.messages import HumanMessage

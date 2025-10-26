@@ -65,17 +65,20 @@ def format_agent_output(agent_name: str, content, iteration: int):
         "prosecutor": "⚔️ ",
         "retriever": "📚",
         "kanoon_fetcher": "🔍",
-        "web_searcher": "🌐"
+        "web_searcher": "🌐",
+        "verdict": "🏛️ "
     }
     
     symbol = symbols.get(agent_name, "•")
     
     # Check for verdict (now safe since content is a string)
-    is_verdict = "Given Verdict" in content or "VERDICT" in content.upper()
+    is_verdict = (agent_name == "verdict" or "Given Verdict" in content or 
+                  "VERDICT DELIVERED" in content.upper() or "GUILTY" in content.upper() or 
+                  "NOT GUILTY" in content.upper())
     
     print("\n" + "=" * 80)
-    if is_verdict:
-        print(f"🏛️  FINAL VERDICT - {agent_name.upper()} - Iteration {iteration} 🏛️")
+    if is_verdict or agent_name == "verdict":
+        print(f"🏛️  FINAL VERDICT - JUDGE - Iteration {iteration} 🏛️")
     else:
         print(f"{symbol} {agent_name.upper()} - Iteration {iteration}")
     print("=" * 80)
@@ -198,8 +201,8 @@ def test_api():
                         
                         # Display agent arguments (main feature!)
                         if status == "progress" and agent_message and len(agent_message.strip()) > 0:
-                            # Show ALL main courtroom actors (judge, lawyer, prosecutor)
-                            if agent_name in ['judge', 'lawyer', 'prosecutor']:
+                            # Show ALL main courtroom actors (judge, lawyer, prosecutor, verdict)
+                            if agent_name in ['judge', 'lawyer', 'prosecutor', 'verdict']:
                                 format_agent_output(agent_name, agent_message, iteration)
                                 displayed_agents.add(agent_name)
                                 
@@ -219,10 +222,17 @@ def test_api():
                                 print(f"\n[DEBUG WARNING] Lawyer at iteration {iteration} had empty/no message!")
                                 print(f"[DEBUG] agent_message value: '{agent_message}'")
                         
+                        # Store verdict when we see it
+                        if status == "progress" and agent_name == "verdict" and agent_message:
+                            final_verdict = agent_message
+                            # Already displayed above via format_agent_output
+                        
                         # Check if workflow is complete
                         if status == "done":
                             # Display final verdict if available
-                            if agent_message and "verdict" in agent_message.lower():
+                            if final_verdict:
+                                print_verdict_summary(final_verdict)
+                            elif agent_message and ("verdict" in agent_message.lower() or "GUILTY" in agent_message.upper() or "NOT GUILTY" in agent_message.upper()):
                                 final_verdict = agent_message
                                 print_verdict_summary(final_verdict)
                             
