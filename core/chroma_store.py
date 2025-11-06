@@ -10,6 +10,7 @@ from pathlib import Path
 import time
 from typing import Optional
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -62,12 +63,14 @@ class ChromaVectorStore:
             self.embeddings = OllamaEmbeddings(model=self.embedding_model)
             print(" [OK]")
             
-            # Initialize text splitter
-            print(f"Initializing text splitter (chunk_size=5000)...", end='', flush=True)
+            # Initialize text splitter with better parameters for legal documents
+            print(f"Initializing text splitter (chunk_size=1000, overlap=200)...", end='', flush=True)
             self.text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=5000,
-                chunk_overlap=10,
+                chunk_size=1000,  # Smaller chunks for better retrieval precision
+                chunk_overlap=200,  # More overlap to preserve context
                 length_function=len,
+                separators=["\n\n", "\n", ". ", " ", ""],  # Legal document separators
+                keep_separator=True  # Keep separators for better context
             )
             print(" [OK]")
             
@@ -115,6 +118,7 @@ class ChromaVectorStore:
     def _index_documents(self):
         """
         Index all documents from the specified path into ChromaDB.
+        Prioritizes summarized versions (*_summary.txt) over original documents.
         Supports .txt, .pdf, .docx files.
         """
         from pathlib import Path
@@ -142,6 +146,28 @@ class ChromaVectorStore:
             print(f"[WARNING] No documents found in '{self.path}'. Store will be empty.")
             return
         
+        # Filter: Prioritize summary files, skip original if summary exists
+        filtered_files = []
+        summary_bases = set()
+        
+        # First pass: identify all summary files
+        for doc_file in document_files:
+            if '_summary.txt' in doc_file.name:
+                # Extract base name (e.g., "doc_summary.txt" -> "doc")
+                base_name = doc_file.name.replace('_summary.txt', '.txt')
+                summary_bases.add(base_name)
+                filtered_files.append(doc_file)
+        
+        # Second pass: add non-summary files if no summary exists
+        for doc_file in document_files:
+            if '_summary.txt' not in doc_file.name:
+                if doc_file.name not in summary_bases:
+                    filtered_files.append(doc_file)
+                else:
+                    print(f"   Skipping {doc_file.name} (using summary instead)")
+        
+        document_files = filtered_files
+        
         print(f"\nTotal documents to process: {len(document_files)}")
         print("=" * 60)
         
@@ -151,7 +177,10 @@ class ChromaVectorStore:
         
         for doc_idx, doc_file in enumerate(document_files, 1):
             try:
-                print(f"\n[{doc_idx}/{len(document_files)}] Processing: {doc_file.name}")
+                is_summary = '_summary.txt' in doc_file.name
+                doc_type = "SUMMARY" if is_summary else "FULL"
+                
+                print(f"\n[{doc_idx}/{len(document_files)}] Processing: {doc_file.name} [{doc_type}]")
                 print(f"   Reading file...", end='', flush=True)
                 
                 text = self._extract_text(doc_file)
@@ -163,16 +192,27 @@ class ChromaVectorStore:
                     chunks = self.text_splitter.split_text(text)
                     print(f" [OK] ({len(chunks)} chunks)")
                     
-                    # Create metadata for each chunk
+                    # Create metadata for each chunk with enhanced information
                     print(f"   Creating metadata...", end='', flush=True)
                     for i, chunk in enumerate(chunks):
                         all_texts.append(chunk)
-                        all_metadatas.append({
+                        
+                        # Enhanced metadata for better retrieval
+                        metadata = {
                             "source": str(doc_file),
                             "filename": doc_file.name,
                             "chunk_index": i,
-                            "total_chunks": len(chunks)
-                        })
+                            "total_chunks": len(chunks),
+                            "chunk_size": len(chunk),
+                            "document_type": self._infer_document_type(doc_file.name, chunk),
+                        }
+                        
+                        # Extract key entities from chunk (IPC sections, case names, etc.)
+                        entities = self._extract_legal_entities(chunk)
+                        if entities:
+                            metadata["legal_entities"] = ", ".join(entities)
+                        
+                        all_metadatas.append(metadata)
                     print(f" [OK]")
                 else:
                     print(f"   [WARNING] File is empty or unreadable")
@@ -311,7 +351,58 @@ class ChromaVectorStore:
         Returns:
             LangChain retriever object
         """
-        return self.vectorstore.as_retriever(**kwargs)
+        # Set better default retrieval parameters
+        default_kwargs = {
+            "search_type": "mmr",  # Maximum Marginal Relevance for diversity
+            "search_kwargs": {
+                "k": 10,  # Retrieve more initially for re-ranking
+                "fetch_k": 20,  # Fetch even more for MMR
+                "lambda_mult": 0.7  # Balance between relevance and diversity
+            }
+        }
+        default_kwargs.update(kwargs)
+        return self.vectorstore.as_retriever(**default_kwargs)
+    
+    def _infer_document_type(self, filename: str, content: str) -> str:
+        """Infer document type from filename and content"""
+        filename_lower = filename.lower()
+        content_lower = content.lower()
+        
+        # Check filename patterns
+        if "ipc" in filename_lower or "penal code" in filename_lower:
+            return "penal_code"
+        elif "case" in filename_lower or "judgment" in filename_lower:
+            return "case_law"
+        elif "crpc" in filename_lower or "procedure" in filename_lower:
+            return "procedural_law"
+        elif "evidence" in filename_lower:
+            return "evidence_act"
+        
+        # Check content patterns
+        if "section" in content_lower and "ipc" in content_lower:
+            return "penal_code"
+        elif "v." in content_lower or "vs." in content_lower:
+            return "case_law"
+        elif "supreme court" in content_lower or "high court" in content_lower:
+            return "case_law"
+        
+        return "general_legal"
+    
+    def _extract_legal_entities(self, text: str) -> list:
+        """Extract legal entities like IPC sections, case names, etc."""
+        entities = []
+        
+        # Extract IPC sections
+        ipc_pattern = r'(?:IPC\s+)?[Ss]ection\s+(\d+[A-Z]?)'
+        ipc_matches = re.findall(ipc_pattern, text)
+        entities.extend([f"IPC {match}" for match in ipc_matches[:3]])  # Limit to 3
+        
+        # Extract case names (simplified pattern)
+        case_pattern = r'([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+v[s]?\.\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)'
+        case_matches = re.findall(case_pattern, text)
+        entities.extend([f"{plaintiff} v. {defendant}" for plaintiff, defendant in case_matches[:2]])
+        
+        return entities[:5]  # Limit total entities
 
 
 if __name__ == "__main__":

@@ -8,60 +8,107 @@ class VerdictAgent:
         self.llms = llms
 
     def render_verdict(self, debate_transcript: str):
-        # This is the specialized prompt for the final verdict.
+        """Generate comprehensive verdict based on entire trial transcript"""
         prompt = f"""
-        You are the Presiding Judge, and your sole duty is to deliver the final, binding verdict in the case of State vs. Rohan Malhotra.
-        You have been provided with the complete transcript of the courtroom proceedings, including all arguments from the prosecution and the defense, and all your own interim evaluations.
+You are the Presiding Judge delivering the FINAL VERDICT in a criminal trial. You have reviewed the complete trial transcript including all arguments from both prosecution and defense.
 
-        **Your Task:**
-        Your only responsibility is to analyze the entire debate and render a definitive verdict. Your decision must be based on which side was more persuasive according to these criteria:
-        1.  **Strength of Legal Arguments:** Which side used legal principles and case law more effectively?
-        2.  **Quality of Evidence:** Which side's evidence (or critique of evidence) was more convincing? (e.g., forensic logs, expert testimony).
-        3.  **Burden of Proof:** Did the prosecution successfully prove guilt "beyond a reasonable doubt"? Or did the defense successfully create "reasonable doubt"?
+YOUR SOLE RESPONSIBILITY: Analyze the trial and deliver a definitive verdict.
 
-        **Output Format:**
-        You MUST begin your response with the line "VERDICT DELIVERED:" and structure your entire response in the following format:
+ANALYSIS FRAMEWORK - Consider these factors systematically:
 
-        VERDICT DELIVERED: [GUILTY / NOT GUILTY]
+1. EVIDENCE EVALUATION:
+   - What concrete evidence was presented by each side?
+   - How credible and substantial is the evidence?
+   - Were there forensic reports, witness testimonies, or documentary evidence?
 
-        REASONING:
-        [Provide a detailed, step-by-step explanation for your decision. Reference specific arguments and turning points from the transcript that led to your conclusion. Explain which side was more persuasive on the key issues of authorship, intent (mens rea), and evidence.]
+2. LEGAL ARGUMENTS STRENGTH:
+   - Which side presented stronger legal arguments with proper citations?
+   - Were IPC sections and case precedents properly applied?
+   - Did arguments have logical consistency?
 
-        CONFIDENCE SCORE: [Provide a percentage from 0% to 100% indicating your confidence in your verdict.]
+3. BURDEN OF PROOF:
+   - Did the prosecution prove guilt "beyond reasonable doubt"?
+   - Or did the defense successfully create "reasonable doubt"?
+   - In criminal law, doubt favors the defendant
 
-        **--- FULL TRIAL TRANSCRIPT TO ANALYZE ---**
-        {debate_transcript}
-        **--- END OF TRANSCRIPT ---**
-        """
+4. KEY ISSUES ANALYSIS:
+   - Intent (mens rea): Was criminal intent proven?
+   - Act (actus reus): Was the criminal act established?
+   - Causation: Was the defendant's action the direct cause?
+
+CRITICAL RULES:
+- Base your verdict ONLY on what was presented in the trial transcript
+- Do NOT introduce new facts or arguments
+- If both sides made strong arguments, favor the defense (reasonable doubt principle)
+- Be objective and impartial
+
+OUTPUT FORMAT (MANDATORY):
+
+VERDICT DELIVERED: [GUILTY / NOT GUILTY]
+
+CASE SUMMARY:
+[Brief 2-3 sentence summary of what this case was about]
+
+EVIDENCE ANALYSIS:
+[Evaluate the key evidence presented by both sides. Which evidence was more compelling?]
+
+LEGAL ARGUMENTS ASSESSMENT:
+Prosecution's Arguments: [Summarize strength and weaknesses]
+Defense's Arguments: [Summarize strength and weaknesses]
+
+BURDEN OF PROOF EVALUATION:
+[Did prosecution meet the "beyond reasonable doubt" standard? Or did defense create reasonable doubt?]
+
+REASONING FOR VERDICT:
+[Detailed explanation of why you reached this verdict. Reference specific arguments and evidence from the transcript. Explain which side was more persuasive and why.]
+
+CONFIDENCE SCORE: [0-100]%
+[Your confidence in this verdict based on clarity of evidence and arguments]
+
+**--- COMPLETE TRIAL TRANSCRIPT ---**
+{debate_transcript}
+**--- END OF TRANSCRIPT ---**
+
+Now, deliver your verdict following the exact format above:
+"""
         
-        # Use the LLM to generate the verdict with fallback mechanism
+        # Use LLM with fallback mechanism
         verdict_text = ""
         for i, llm in enumerate(self.llms):
             try:
                 response = llm.invoke([{"role": "user", "content": prompt}])
                 verdict_text = safe_get_content(response)
                 
-                # Ensure verdict text has required format
-                if not verdict_text or len(verdict_text.strip()) < 20:
-                    print(f"[WARNING] Verdict text too short, trying next LLM")
+                # Validate verdict format
+                if not verdict_text or len(verdict_text.strip()) < 50:
+                    print(f"[WARNING] Verdict text too short from LLM {i}, trying next")
                     continue
                 
-                # Check if verdict contains required keywords
+                # Check for required components
                 verdict_upper = verdict_text.upper()
-                if "VERDICT DELIVERED" not in verdict_upper and "GUILTY" not in verdict_upper:
-                    print(f"[WARNING] Verdict missing keywords, trying next LLM")
+                has_verdict = "VERDICT DELIVERED" in verdict_upper or "GUILTY" in verdict_upper or "NOT GUILTY" in verdict_upper
+                has_reasoning = "REASONING" in verdict_upper or "ANALYSIS" in verdict_upper
+                
+                if not has_verdict:
+                    print(f"[WARNING] Verdict missing verdict statement from LLM {i}, trying next")
                     continue
                 
                 print(f"[SUCCESS] Verdict generated by LLM {i}")
                 break
             except Exception as e:
-                print(f"VerdictAgent LLM {i} failed with error: {e}")
+                print(f"[ERROR] VerdictAgent LLM {i} failed: {e}")
                 continue
         
-        # Fallback if all LLMs fail or produce invalid output
-        if not verdict_text or len(verdict_text.strip()) < 20:
-            print("[ERROR] All LLMs failed, using fallback verdict")
-            return "VERDICT DELIVERED: NOT GUILTY\n\nREASONING: Unable to process verdict due to technical issues. Default to not guilty to protect defendant's rights.\n\nCONFIDENCE SCORE: 0%"
+        # Fallback if all LLMs fail
+        if not verdict_text or len(verdict_text.strip()) < 50:
+            print("[ERROR] All LLMs failed to generate valid verdict, using fallback")
+            return """VERDICT DELIVERED: NOT GUILTY
+
+REASONING: Due to technical difficulties in processing the trial transcript, and in accordance with the legal principle that doubt must favor the defendant, this court declares the defendant NOT GUILTY. The prosecution bears the burden of proving guilt beyond reasonable doubt, and in the absence of a properly rendered analysis, that burden cannot be considered met.
+
+CONFIDENCE SCORE: 0%
+
+This is a default verdict issued due to system limitations and does not reflect the actual merits of the case."""
         
         return verdict_text
 
@@ -110,35 +157,86 @@ class VerdictAgent:
         }
     
     def _generate_fallback_verdict(self, state):
-        """Generate a simple fallback verdict based on transcript analysis"""
-        print("[FALLBACK] Generating fallback verdict...")
+        """Generate a structured fallback verdict based on transcript analysis"""
+        print("[FALLBACK] Generating structured fallback verdict...")
         
         messages = state.get("messages", [])
-        prosecutor_mentions = 0
-        lawyer_mentions = 0
+        
+        # Analyze conversation for key indicators
+        prosecutor_args = []
+        lawyer_args = []
+        judge_comments = []
         
         for msg in messages:
             content = ""
+            name = ""
             if hasattr(msg, 'content'):
                 content = str(msg.content).lower()
+            if hasattr(msg, 'name'):
+                name = msg.name
             
-            if msg.name == "prosecutor":
-                prosecutor_mentions += 1
-            elif msg.name == "lawyer":
-                lawyer_mentions += 1
+            if name == "prosecutor" and len(content) > 50:
+                prosecutor_args.append(content)
+            elif name == "lawyer" and len(content) > 50:
+                lawyer_args.append(content)
+            elif name == "judge" and len(content) > 50:
+                judge_comments.append(content)
         
-        # Simple logic: if more prosecutor mentions, likely guilty, else not guilty
-        decision = "GUILTY" if prosecutor_mentions > lawyer_mentions * 1.2 else "NOT GUILTY"
+        # Count key legal terms and strength indicators
+        prosecutor_strength = sum([
+            content.count('evidence') + content.count('proof') + 
+            content.count('ipc') + content.count('section')
+            for content in prosecutor_args
+        ])
+        
+        lawyer_strength = sum([
+            content.count('defense') + content.count('reasonable doubt') + 
+            content.count('insufficient') + content.count('not proven')
+            for content in lawyer_args
+        ])
+        
+        # Determine verdict based on analysis
+        # In criminal law, tie or close calls favor defense (reasonable doubt)
+        if lawyer_strength > prosecutor_strength * 0.8:  # Defense needs less to create doubt
+            decision = "NOT GUILTY"
+            reasoning = f"""After analyzing {len(prosecutor_args)} prosecution arguments and {len(lawyer_args)} defense arguments, the court finds that the prosecution has not met the burden of proving guilt beyond a reasonable doubt.
+
+The defense successfully raised sufficient questions regarding the evidence and legal interpretation. In criminal proceedings, any reasonable doubt must favor the defendant.
+
+Key factors:
+- Defense presented {lawyer_strength} substantive legal points
+- Prosecution presented {prosecutor_strength} substantive legal points
+- The evidence presented was insufficient to overcome reasonable doubt"""
+        else:
+            decision = "GUILTY"
+            reasoning = f"""After analyzing {len(prosecutor_args)} prosecution arguments and {len(lawyer_args)} defense arguments, the court finds that the prosecution has successfully proven the case beyond a reasonable doubt.
+
+The evidence and legal arguments presented by the prosecution were more compelling and substantial than those presented by the defense.
+
+Key factors:
+- Prosecution presented {prosecutor_strength} substantive legal points with evidence
+- Defense presented {lawyer_strength} counterarguments
+- The prosecution's evidence was sufficient to establish guilt"""
+        
+        confidence = min(75, max(40, abs(prosecutor_strength - lawyer_strength) * 5))
         
         verdict = f"""VERDICT DELIVERED: {decision}
 
-REASONING:
-After careful consideration of all arguments presented by both parties, the court has analyzed {len(messages)} pieces of testimony and evidence. The prosecution presented {prosecutor_mentions} arguments while the defense presented {lawyer_mentions} arguments.
+CASE SUMMARY:
+This case involved criminal charges where the prosecution and defense presented their respective arguments over the course of {len(messages)} courtroom exchanges.
 
-Based on the balance of evidence and legal arguments, the court finds that the evidence {"supports" if decision == "GUILTY" else "does not support"} the charges beyond a reasonable doubt.
+EVIDENCE ANALYSIS:
+The trial featured {len(prosecutor_args)} prosecutorial arguments and {len(lawyer_args)} defense arguments. The court evaluated the strength, relevance, and legal grounding of all submitted evidence and testimonies.
 
-The defendant is hereby declared {decision}.
+LEGAL ARGUMENTS ASSESSMENT:
+Prosecution's Arguments: Presented {len(prosecutor_args)} arguments with {prosecutor_strength} key legal points and evidence citations.
+Defense's Arguments: Presented {len(lawyer_args)} arguments with {lawyer_strength} key legal points and reasonable doubt assertions.
 
-CONFIDENCE SCORE: 75%"""
+BURDEN OF PROOF EVALUATION:
+{reasoning}
+
+CONFIDENCE SCORE: {confidence}%
+
+[NOTE: This is a fallback verdict generated due to system limitations. Manual review recommended.]"""
         
         return verdict

@@ -1,5 +1,5 @@
 from core.workflow import TrialWorkflow
-from agents import LawyerAgent, ProsecutorAgent, JudgeAgent, RetrieverAgent, FetchingAgent, WebSearcherAgent
+from agents import LawyerAgent, ProsecutorAgent, JudgeAgent, RetrieverAgent, InitialRetrieverAgent, FetchingAgent, WebSearcherAgent, DocumentSummarizationAgent
 import asyncio
 from langchain_ollama import OllamaLLM
 import os
@@ -51,18 +51,22 @@ print("Creating agent instances...")
 print("  - LawyerAgent")
 print("  - ProsecutorAgent")
 print("  - JudgeAgent")
-print("  - RetrieverAgent")
+print("  - RetrieverAgent (legacy)")
+print("  - InitialRetrieverAgent (comprehensive doc fetch)")
 print("  - FetchingAgent (Kanoon)")
 print("  - WebSearcherAgent")
+print("  - DocumentSummarizationAgent")
 
 workflow = TrialWorkflow(
     lawyer=LawyerAgent(llms=llms),
     prosecutor=ProsecutorAgent(llms=llms),
     judge=JudgeAgent(llms=llms),
-    retriever=RetrieverAgent(llms=llms),
+    retriever=RetrieverAgent(llms=llms),  # Legacy, kept for compatibility
+    initial_retriever=InitialRetrieverAgent(llms=llms),  # NEW
     kanoon_fetcher=FetchingAgent(llms=llms),
     web_searcher=WebSearcherAgent(llm=llm_0),
-    llms=llms  # Add llms parameter for VerdictAgent
+    document_summarizer=DocumentSummarizationAgent(llms=llms),
+    llms=llms
 )
 
 print("All agents initialized successfully")

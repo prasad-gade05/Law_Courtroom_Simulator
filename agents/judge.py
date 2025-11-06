@@ -26,7 +26,7 @@ class JudgeAgent:
         
         # Comprehensive system prompt defining the judge's role and responsibilities
         self.system_prompt = """
-"You are a presiding judge overseeing a courtroom simulation. Your primary role is to evaluate the arguments presented by the lawyer and prosecutor for logical consistency, factual accuracy, and adherence to legal principles."
+You are a presiding judge overseeing a courtroom simulation. Your primary role is to evaluate the arguments presented by the lawyer and prosecutor for logical consistency, factual accuracy, and adherence to legal principles.
 
 CRITICAL JUDGE RULES:
 1. You are NOT a researcher - you do NOT request legal data or web searches
@@ -38,12 +38,19 @@ CRITICAL JUDGE RULES:
 7. You alternate between them fairly based on who spoke last
 8. You have the authority to conclude the trial when both sides have fully presented their case
 
+ITERATION AWARENESS:
+- Current iteration: {iteration}
+- If iteration >= 15: Encourage both parties to prepare closing arguments
+- If iteration >= 18: Strongly signal that it's time for final statements
+- If iteration >= 20: You MUST conclude the trial and proceed to verdict
+
 NATURAL TRIAL CONCLUSION - YOUR KEY RESPONSIBILITY:
 - Actively monitor if both sides are starting to repeat themselves or have exhausted their arguments
 - Look for signs that the debate has reached a natural conclusion (e.g., "I rest my case", "no further arguments", repetitive points)
-- If you believe both sides have fully presented their case and further debate would be unproductive, you have the AUTHORITY and RESPONSIBILITY to conclude the debate
-- When ready to conclude, respond with: "Both sides have presented comprehensive arguments. The court is ready to proceed to verdict. NEXT: verdict"
-- You do NOT need to wait for a specific iteration count - trust your judgment as a judge
+- At iteration 15+, start encouraging parties to wrap up
+- At iteration 18+, indicate it's time for closing statements
+- At iteration 20, you MUST conclude: "Both sides have had ample opportunity to present their case. The court will now proceed to verdict. NEXT: verdict"
+- Trust your judgment as a judge - conclude when arguments are exhausted
 
 ROUTING INSTRUCTIONS:
 - When continuing trial, end with "NEXT SPEAKER: lawyer" or "NEXT SPEAKER: prosecutor"  
@@ -93,6 +100,9 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
             
         """
         
+        # Get iteration count for context
+        iteration = state.get("iteration_count", 0)
+        
         # Safety check: Ensure thought_step is within bounds
         thought_steps = self.get_thought_steps()
         current_step = state.get("thought_step", 0)
@@ -101,9 +111,10 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
             print(f"[WARNING] Judge thought_step {current_step} out of range (max {len(thought_steps)-1}), resetting to 0")
             current_step = 0
         
-        # Prepare messages for LLM processing
+        # Prepare messages for LLM processing with iteration context
+        enhanced_prompt = self.system_prompt.format(iteration=iteration)
         messages = [
-            {"role": "system", "content": self.system_prompt}
+            {"role": "system", "content": enhanced_prompt}
         ] + state["messages"] + [{"role": "system", "content": f"current_task: {thought_steps[current_step]}" }]
         # print(messages)
         # Process through LLMs with fallback mechanism
@@ -141,7 +152,8 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                 "messages": [HumanMessage(content=result_content, name="judge")],
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
-                "caller": "judge"
+                "caller": "judge",
+                "iteration_count": iteration
             }
         elif state["thought_step"] == 1:
             # Evaluation step
@@ -149,7 +161,8 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                 "messages": [HumanMessage(content=result_content, name="judge")],
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
-                "caller": "judge"
+                "caller": "judge",
+                "iteration_count": iteration
             }
         elif state["thought_step"] == 2:
             # Decision step
@@ -157,17 +170,22 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                 "messages": [HumanMessage(content=result_content, name="judge")],
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
-                "caller": "judge"
+                "caller": "judge",
+                "iteration_count": iteration
             }
         elif state["thought_step"] == 3:
             # Final decision: Verdict OR route to next speaker
+            # Increment iteration when routing to next agent (new debate turn)
+            next_iteration = iteration + 1
+            
             # Check if verdict was delivered
             if "VERDICT DELIVERED" in result_content:
                 response = {
                     "messages": [HumanMessage(content=result_content, name="judge")],
                     "next": "END",
                     "thought_step": 0,
-                    "caller": "judge"
+                    "caller": "judge",
+                    "iteration_count": next_iteration
                 }
             else:
                 # No verdict - determine next speaker from content
@@ -176,7 +194,8 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                     "messages": [HumanMessage(content=result_content, name="judge")],
                     "next": next_dest,
                     "thought_step": 0,
-                    "caller": "judge"
+                    "caller": "judge",
+                    "iteration_count": next_iteration
                 }
         else:
             raise ValueError(f"Invalid thought step: {state['thought_step']}")
@@ -203,8 +222,8 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
         
         # Check iteration count as failsafe for termination - IMPROVED LOGIC
         iteration = state.get("iteration_count", 0)
-        if iteration >= 18:  # Start forcing verdict earlier to avoid recursion limit
-            print(f"[JUDGE] Iteration {iteration} >= 18, forcing verdict to prevent recursion limit")
+        if iteration >= 20:  # Force verdict at iteration 20 to ensure natural conclusion
+            print(f"[JUDGE] Iteration {iteration} >= 20, forcing verdict for natural conclusion")
             return "verdict"
         
         # Look for explicit patterns

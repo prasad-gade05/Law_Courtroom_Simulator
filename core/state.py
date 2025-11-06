@@ -9,5 +9,7 @@ class AgentState(MessagesState):
     next: str  # Where to route to next
     thought_step: Optional[int] = 0  # Current step in chain of thought
     caller: Optional[str] = None  # Who called the agent
-    iteration_count: Optional[int] = 0  # Total workflow iterations (NEW)
-    web_search_count: Optional[int] = 0  # Count of web searches used (NEW)
+    iteration_count: Optional[int] = 0  # Total workflow iterations
+    web_search_count: Optional[int] = 0  # Count of web searches used
+    initial_retrieval_done: Optional[bool] = False  # Track if initial document fetch is complete
+    retrieved_context: Optional[str] = ""  # Store retrieved legal context for all agents

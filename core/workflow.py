@@ -24,9 +24,11 @@ class TrialWorkflow:
         prosecutor, 
         judge,
         retriever,
+        initial_retriever,  # NEW: Initial retriever for comprehensive document fetch
         kanoon_fetcher,
         web_searcher,
-        llms  # Add llms parameter for VerdictAgent
+        document_summarizer,
+        llms
     ):
         """
         Initialize the trial workflow with required agents.
@@ -35,110 +37,110 @@ class TrialWorkflow:
             lawyer: Agent representing defense counsel
             prosecutor: Agent representing prosecution
             judge: Agent managing trial flow and making decisions
-            retriever: Agent for retrieving relevant legal information
+            retriever: Agent for retrieving relevant legal information (legacy, kept for compatibility)
+            initial_retriever: Agent for initial comprehensive document retrieval
             kanoon_fetcher: Agent for fetching case-specific data
             web_searcher: Agent for web searches
+            document_summarizer: Agent for summarizing fetched documents
         """
         self.lawyer = lawyer
         self.prosecutor = prosecutor
         self.judge = judge
         self.retriever = retriever
+        self.initial_retriever = initial_retriever  # NEW
         self.kanoon_fetcher = kanoon_fetcher
         self.web_searcher = web_searcher
-        self.verdict_agent = VerdictAgent(llms)  # Initialize our new VerdictAgent
-        self.memory = MemorySaver()  # For checkpointing workflow state
+        self.document_summarizer = document_summarizer
+        self.verdict_agent = VerdictAgent(llms)
+        self.memory = MemorySaver()
         self.graph = self._create_graph()
     
     def _create_graph(self) -> StateGraph:
-        """Create and configure the final, corrected trial workflow graph."""
+        """Create and configure the trial workflow graph with initial retrieval phase"""
         workflow = StateGraph(AgentState)
         
         # 1. Add all nodes
         workflow.add_node("kanoon_fetcher", self._kanoon_fetcher_node)
+        workflow.add_node("document_summarizer", self._document_summarizer_node)
+        workflow.add_node("initial_retriever", self._initial_retriever_node)  # NEW
         workflow.add_node("judge", self._judge_node)
         workflow.add_node("lawyer", self._lawyer_node)
         workflow.add_node("prosecutor", self._prosecutor_node)
-        workflow.add_node("retriever", self._retriever_node)
-        workflow.add_node("web_searcher", self._web_search_node)
-        workflow.add_node("user_feedback", self._user_feedback_node)
-        workflow.add_node("verdict", self._verdict_node) # Our new verdict node
+        workflow.add_node("verdict", self._verdict_node)
 
-        # 2. Define the workflow path
+        # 2. Define the workflow path - START with comprehensive document retrieval
         workflow.set_entry_point("kanoon_fetcher")
-        workflow.add_edge("kanoon_fetcher", "prosecutor")
+        workflow.add_edge("kanoon_fetcher", "document_summarizer")
+        workflow.add_edge("document_summarizer", "initial_retriever")  # NEW: Fetch all docs first
+        workflow.add_edge("initial_retriever", "prosecutor")  # Then proceed to opening statements
         
-        workflow.add_edge("user_feedback", "lawyer")
-
-        # 3. Add the "Smart Trigger" after each main debater speaks
+        # 3. Simplified routing - NO retriever/web_searcher calls during debate
         workflow.add_conditional_edges(
             "lawyer",
             self._route_from_lawyer_or_prosecutor,
             {
-                "continue_debate": "judge", # If not over, go to the Judge
-                "end_debate": "verdict",      # If it's over, go to the Verdict
-                "retriever": "retriever",
-                "web_searcher": "web_searcher",
-                "user_feedback": "user_feedback",
-                "self": "lawyer"  # For chain of thought reasoning
+                "continue_debate": "judge",
+                "end_debate": "verdict",
+                "self": "lawyer"
             }
         )
         workflow.add_conditional_edges(
             "prosecutor",
             self._route_from_lawyer_or_prosecutor,
             {
-                "continue_debate": "judge", # If not over, go to the Judge
-                "end_debate": "verdict",      # If it's over, go to the Verdict
-                "retriever": "retriever",
-                "web_searcher": "web_searcher",
-                "self": "prosecutor"  # For chain of thought reasoning
+                "continue_debate": "judge",
+                "end_debate": "verdict",
+                "self": "prosecutor"
             }
         )
         
         # 4. The Judge moderates the debate
         workflow.add_conditional_edges(
             "judge",
-            self._route_from_judge, # Your existing router is perfect
+            self._route_from_judge,
             {
                 "lawyer": "lawyer",
                 "prosecutor": "prosecutor",
-                "retriever": "retriever",
-                "web_searcher": "web_searcher",
                 "verdict": "verdict",
                 "self": "judge",
                 "END": END
             }
         )
         
-        # 5. Tool-using agents return to their caller
-        workflow.add_conditional_edges(
-            "retriever",
-            self._route_from_retriever,
-            {
-                "lawyer": "lawyer",
-                "prosecutor": "prosecutor",
-                "judge": "judge"
-            }
-        )
-        workflow.add_conditional_edges(
-            "web_searcher",
-            self._route_from_retriever,
-            {
-                "judge": "judge",
-                "lawyer": "lawyer",
-                "prosecutor": "prosecutor"
-            }
-        )
-        
-        # 6. The verdict node is the final step
+        # 5. The verdict node is the final step
         workflow.add_edge("verdict", END)
         
-        # 7. Compile the graph
-        return workflow.compile(checkpointer=self.memory, interrupt_before=["user_feedback"])
+        # 6. Compile the graph without user_feedback interruption
+        return workflow.compile(checkpointer=self.memory)
     
     # Agent node processing methods
     async def _kanoon_fetcher_node(self, state: AgentState) -> AgentState:
         """Kanoon Fetcher node processing"""
         return await self.kanoon_fetcher.process(state)
+    
+    async def _document_summarizer_node(self, state: AgentState) -> AgentState:
+        """Document Summarizer node processing"""
+        print("\n[WORKFLOW] Document summarizer activated - processing fetched documents")
+        result = await self.document_summarizer.process(state)
+        
+        # After summarization, we need to trigger vector database re-indexing
+        # by deleting the chroma_db cache
+        print("[WORKFLOW] Triggering vector database re-indexing...")
+        try:
+            import shutil
+            chroma_path = "chroma_db/public"
+            if os.path.exists(chroma_path):
+                shutil.rmtree(chroma_path)
+                print(f"[WORKFLOW] Deleted {chroma_path} - will re-index with summaries on next retrieval")
+        except Exception as e:
+            print(f"[WORKFLOW] Could not delete chroma cache: {e}")
+        
+        return result
+    
+    async def _initial_retriever_node(self, state: AgentState) -> AgentState:
+        """Initial comprehensive retrieval node processing"""
+        print("\n[WORKFLOW] Initial retriever activated - fetching all relevant documents")
+        return await self.initial_retriever.process(state)
     
     async def _judge_node(self, state: AgentState) -> AgentState:
         """Judge node processing"""
@@ -165,11 +167,6 @@ class TrialWorkflow:
         # print(f"Web Search node processing with state: {state}")
         return await self.web_searcher.process(state)
     
-    async def _user_feedback_node(self, state: AgentState) -> AgentState:
-        """User feedback node processing"""
-        # print(f"User feedback node processing with state: {state}")
-        pass
-    
     async def _verdict_node(self, state: AgentState) -> AgentState:
         """This node calls our VerdictAgent to deliver the final judgment."""
         print("\n[VERDICT NODE] Processing verdict...")
@@ -190,28 +187,33 @@ class TrialWorkflow:
         return state["next"]
     
     def should_end_debate(self, state: AgentState) -> Literal["continue_debate", "end_debate"]:
-        """This is our 'smart trigger'. It decides when the debate is over."""
+        """Determine when the debate should end naturally by iteration 20"""
         iteration_count = state.get("iteration_count", 0)
         messages = state.get("messages", [])
         
-        # Reduced limit to ensure verdict is reached before recursion limit
-        MAX_DEBATE_ITERATIONS = 18  # Changed from 20 to 18
+        # Natural verdict by iteration 20
+        MAX_DEBATE_ITERATIONS = 20
 
-        # Check for keywords that signal the end of an argument.
+        # Check for natural ending keywords
         last_message_content = messages[-1].content.lower() if messages and hasattr(messages[-1], 'content') else ""
-        end_keywords = ["i rest my case", "no further arguments", "we await the court's decision"]
+        end_keywords = ["i rest my case", "the prosecution rests", "the defense rests", "no further arguments", "we await the court's decision", "in conclusion, your honor"]
 
         if any(keyword in last_message_content for keyword in end_keywords):
-            print(f"[ROUTER] End keyword detected. Proceeding to verdict.")
+            print(f"[ROUTER] End keyword detected in iteration {iteration_count}. Proceeding to verdict.")
             return "end_debate"
 
-        # CRITICAL: Force verdict when approaching recursion limit
+        # Progressive natural ending based on iteration count
         if iteration_count >= MAX_DEBATE_ITERATIONS:
-            print(f"[ROUTER] Iteration limit of {MAX_DEBATE_ITERATIONS} reached. Proceeding to verdict.")
+            print(f"[ROUTER] Iteration {iteration_count} reached max of {MAX_DEBATE_ITERATIONS}. Forcing verdict.")
             return "end_debate"
-        elif iteration_count >= 16:  # Start encouraging end when close to limit
-            print(f"[ROUTER] Iteration {iteration_count} is high. Starting to wind down debate.")
-            return "end_debate"  # End debate when getting close to limit
+        elif iteration_count >= 18:
+            print(f"[ROUTER] Iteration {iteration_count} >= 18. Strongly encouraging conclusion.")
+            # At this point, agents should be delivering closing statements
+            return "end_debate"
+        elif iteration_count >= 15:
+            print(f"[ROUTER] Iteration {iteration_count} >= 15. Starting to wind down debate.")
+            # Agents will start preparing closing arguments
+            return "continue_debate"
         else:
             print(f"[ROUTER] Continuing debate. Current iteration: {iteration_count}")
             return "continue_debate"
@@ -229,9 +231,9 @@ class TrialWorkflow:
         # First check the agent's intended next action
         intended_next = state.get("next", "judge")
         
-        # If the agent wants to go to retriever, web_searcher, user_feedback, or self, honor that
-        if intended_next in ["retriever", "web_searcher", "user_feedback", "self"]:
-            return intended_next
+        # If the agent wants to go to self (multi-step thought process), honor that
+        if intended_next == "self":
+            return "self"
         
         # If the agent intends to go to judge (normal debate flow), check if debate should end
         if intended_next == "judge":
@@ -478,127 +480,6 @@ class TrialWorkflow:
                                 "content": "Workflow completed with verdict"
                             }
                             return
-                        
-                        # Check if we're at user_feedback (interrupt point)
-                        if next_node == "user_feedback":
-                            print(f"\n[USER FEEDBACK] Checkpoint reached at iteration {iteration_count}")
-                            feedback_message = "Please strengthen the arguments with more legal precedents."
-                            
-                            print(f"  Providing automatic feedback: {feedback_message[:80]}...")
-                            
-                            # Update state with feedback
-                            self.graph.update_state(
-                                thread,
-                                {"messages": [HumanMessage(content=feedback_message, name="user")]},
-                                as_node="user_feedback"
-                            )
-                            
-                            print(f"  Resuming workflow after feedback...")
-                            
-                            # Continue streaming
-                            async for resume_state in self.graph.astream(None, thread, stream_mode="updates"):
-                                resume_start = time.time()
-                                iteration_count += 1
-                                
-                                print(f"\n[ITERATION {iteration_count}] Started (post-feedback)")
-                                print(f"  Time elapsed: {time.time() - workflow_start_time:.1f}s")
-                                
-                                if not resume_state:
-                                    print("  WARNING: Empty resume state, skipping...")
-                                    continue
-                                    
-                                resume_node = list(resume_state.keys())[0]
-                                resume_output = resume_state.get(resume_node, {})
-                                
-                                print(f"  Node: {resume_node}")
-                                
-                                resume_next = "unknown"
-                                if isinstance(resume_output, dict):
-                                    resume_next = resume_output.get("next", "unknown")
-                                    print(f"  Next node: {resume_next}")
-                                    
-                                    # Update iteration count in state
-                                    resume_output["iteration_count"] = iteration_count
-                                
-                                # Extract agent message
-                                resume_agent_message = ""
-                                if isinstance(resume_output, dict) and resume_output.get("messages"):
-                                    messages_list = resume_output.get("messages", [])
-                                    if messages_list and len(messages_list) > 0:
-                                        latest_msg = messages_list[-1]
-                                        # Extract content from the message object
-                                        if hasattr(latest_msg, 'content'):
-                                            resume_agent_message = latest_msg.content
-                                        elif isinstance(latest_msg, dict) and 'content' in latest_msg:
-                                            resume_agent_message = latest_msg['content']
-                                        elif isinstance(latest_msg, str):
-                                            resume_agent_message = latest_msg
-                                
-                                # Ensure it's a string
-                                if not isinstance(resume_agent_message, str):
-                                    resume_agent_message = str(resume_agent_message) if resume_agent_message else ""
-                                
-                                # Check for verdict in message
-                                verdict_in_resume = "VERDICT DELIVERED" in resume_agent_message or "Given Verdict" in resume_agent_message
-                                
-                                # Create unique event key
-                                resume_event_key = f"{iteration_count}_{resume_node}_{resume_next}"
-                                
-                                # Yield only if not duplicate
-                                if resume_event_key not in yielded_events:
-                                    yield {
-                                        "status": "progress",
-                                        "agent_name": resume_node,
-                                        "iteration": iteration_count,
-                                        "next_agent": resume_next,
-                                        "agent_message": resume_agent_message,
-                                        "content": f"Agent '{resume_node}' completed (post-feedback)"
-                                    }
-                                    yielded_events.add(resume_event_key)
-                                
-                                resume_time = time.time() - resume_start
-                                print(f"  Duration: {resume_time:.2f}s")
-                                
-                                
-                                # Let the graph manage its own flow - removed manual routing logic
-                                # The graph's conditional edges will handle verdict routing naturally
-                                
-                                if isinstance(resume_output, dict) and resume_output.get("next") == "END":
-                                    print(f"\n[WORKFLOW END] Reached END state at iteration {iteration_count}")
-                                    print(f"Total time: {time.time() - workflow_start_time:.1f}s")
-                                    
-                                    # Extract final verdict from messages
-                                    verdict_found = False
-                                    final_verdict_msg = ""
-                                    
-                                    if isinstance(resume_output, dict) and resume_output.get("messages"):
-                                        for msg in reversed(resume_output.get("messages", [])):
-                                            msg_content = ""
-                                            if hasattr(msg, 'content'):
-                                                msg_content = msg.content
-                                            elif isinstance(msg, dict) and 'content' in msg:
-                                                msg_content = msg['content']
-                                            
-                                            if msg_content and ("verdict" in str(msg).lower() or "VERDICT DELIVERED" in msg_content.upper() or 
-                                                               "GUILTY" in msg_content.upper() or "NOT GUILTY" in msg_content.upper()):
-                                                final_verdict_msg = msg_content
-                                                verdict_found = True
-                                                print(f"[WORKFLOW END] Verdict found in post-feedback messages")
-                                                break
-                                    
-                                    if not verdict_found:
-                                        final_verdict_msg = resume_agent_message if resume_agent_message else "Verdict delivered"
-                                    
-                                    yield {
-                                        "status": "done",
-                                        "agent_name": "verdict" if verdict_found else "judge",
-                                        "iteration": iteration_count,
-                                        "agent_message": final_verdict_msg,
-                                        "content": "Workflow completed with verdict"
-                                    }
-                                    return
-                                
-                                # Removed manual max iteration check - let the graph manage its own lifecycle
                     
                     # Removed manual max iteration check - let the graph manage its own lifecycle
                             

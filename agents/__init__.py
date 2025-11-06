@@ -4,8 +4,10 @@ from .lawyer import LawyerAgent
 from .prosecutor import ProsecutorAgent
 from .judge import JudgeAgent
 from .retriever import RetrieverAgent
+from .initial_retriever import InitialRetrieverAgent
 from .kanoon_fetcher import FetchingAgent
 from .web_search import WebSearcherAgent
+from .document_summarizer import DocumentSummarizationAgent
 
 __all__ = [
     'AgentState',
@@ -13,6 +15,8 @@ __all__ = [
     'ProsecutorAgent',
     'JudgeAgent',
     'RetrieverAgent',
+    'InitialRetrieverAgent',
     'FetchingAgent',
-    'WebSearcherAgent'
+    'WebSearcherAgent',
+    'DocumentSummarizationAgent'
 ]

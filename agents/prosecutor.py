@@ -26,33 +26,49 @@ class ProsecutorAgent:
         self.tools = tools or []
         
         self.system_prompt = """
-"You are a professional prosecutor advocating for the opposing party in a courtroom simulation. Your role is to challenge the defense's arguments and present evidence and laws to support the prosecution's case."
-"Analyze and counter the defense lawyer's claims effectively, relying on factual accuracy, logical reasoning, and legal provisions."
-"INFORMATION GATHERING PROTOCOL: First, always request information from the Law Retriever agent to access relevant laws and case studies from the local database. After receiving the Law Retriever's response, carefully assess if the information is complete and sufficient. If the results are insufficient, incomplete, or a specific case/precedent is missing from the database, your immediate next step is to formulate a clear, specific query for the Web Searcher agent to find additional factual or contextual evidence online."
-"This ensures comprehensive information gathering: local database first, then web search to fill gaps."
-"Your arguments should reflect high levels of objectivity, clarity, and persuasive reasoning, adhering to the principles of fairness and justice."
-"Respond to the judge's observations or corrections with due diligence and adapt your arguments to maintain a strong prosecutorial stance."
+You are a professional prosecutor advocating for justice in a courtroom simulation. Your role is to present evidence-based arguments grounded in law and facts.
 
-you will go through the following chain of thought steps:
-1. Review current state and plan a strategy
-2. Identify the legal information needed to support the argument
-3. Assess if information from the web is required
-4. Argument construction
+CRITICAL: You have access to comprehensive legal context that was retrieved at the start of the trial. USE THIS CONTEXT to support your arguments. DO NOT request additional documents - focus on ARGUING your case.
 
-IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in next steps or other agents. Do not confuse with precedent cases. Avoid very long responses.
+ARGUMENT FLOW MANAGEMENT:
+1. Review the COMPLETE conversation history and retrieved legal context
+2. NEVER repeat arguments already made - build upon them or introduce new counterpoints
+3. Directly address and counter the defense lawyer's latest arguments
+4. Maintain a logical progression: Case Overview → Evidence → Legal Application → Rebuttal → Conclusion
+5. Track what has been discussed to avoid redundancy
+
+ITERATION AWARENESS:
+- Current iteration: {iteration}
+- If iteration >= 15: Start preparing your CLOSING ARGUMENT
+- If iteration >= 18: Deliver FINAL CLOSING STATEMENT and rest your case
+
+ARGUMENT QUALITY:
+- Present arguments as natural dialogue, not bullet points
+- Be concise and impactful (3-5 key sentences per argument)
+- Reference the legal context: "According to IPC Section X which was provided..."
+- Focus on: (a) Evidence against the defendant (b) Applicable laws (c) Logical reasoning
+- Maintain objectivity and professional tone
+
+CLOSING SIGNALS:
+When ready to conclude (iteration 18+), use phrases like:
+- "In conclusion, Your Honor..."
+- "Based on all the evidence and legal provisions discussed..."
+- "The prosecution rests its case."
 """
 
     def get_thought_steps(self) -> List[str]:
         """Get prosecutor-specific chain of thought steps"""
         return [
-            "1. Review the case files, analyze the user's arguments to identify weaknesses or inconsistencies in their claims and plan a strategy to build strong arguments against the defendant, ensuring they are logically sound and factually supported.",
-            "2. Determine the specific legal information(e.g., laws, IPCs, precedents) required to strengthen your arguments or refute the user's points. Clearly ask the law retriever agent for the necessary details.",
-            "3. Evaluate if additional web-based information is needed. If yes, ask the web searcher agent with specific details. If not, reply only with the keyword 'none.'",
-            "4. Construct a comprehensive argument or counterargument based on the retrieved data and your planed strategy. Write the response as live dialogue (avoid bullet points), maintaining logical coherence and factual accuracy. Be concise and impactful."
+            "1. REVIEW & STRATEGIZE: Carefully read the ENTIRE conversation history and the retrieved legal context. Identify: (a) What arguments have YOU already made (b) What the defense lawyer claimed most recently (c) What the judge's feedback was. Check the current iteration number. If iteration >= 15, plan your closing argument. If iteration >= 18, prepare final closing statement.",
+            "2. CONSTRUCT ARGUMENT: Using the retrieved legal context available in the conversation history, construct a persuasive argument as natural dialogue. Structure: (a) Direct rebuttal to defense's latest point (b) Your main prosecutorial argument with legal support (c) Evidence presentation (d) Conclusion. Use phrases like 'According to IPC Section X...' to reference the legal context. Be concise (3-5 sentences). If iteration >= 18, deliver your FINAL CLOSING STATEMENT and indicate you rest your case."
         ]
 
     async def process(self, state: AgentState) -> AgentState:
         """Process current state with prosecutor-specific logic"""
+        
+        # Get iteration count and legal context
+        iteration = state.get("iteration_count", 0)
+        retrieved_context = state.get("retrieved_context", "")
         
         # Safety check: Ensure thought_step is within bounds
         thought_steps = self.get_thought_steps()
@@ -62,19 +78,22 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
             print(f"[WARNING] Prosecutor thought_step {current_step} out of range (max {len(thought_steps)-1}), resetting to 0")
             current_step = 0
         
+        # Add legal context and iteration info to system prompt
+        enhanced_prompt = self.system_prompt.format(iteration=iteration)
+        if retrieved_context:
+            enhanced_prompt += f"\n\nRETRIEVED LEGAL CONTEXT:\n{retrieved_context[:2000]}\n...(context available)"
+        
         messages = [
-            {"role": "system", "content": self.system_prompt + "\n'current_task': " + thought_steps[current_step]}
+            {"role": "system", "content": enhanced_prompt + "\n'current_task': " + thought_steps[current_step]}
         ] + state["messages"]
 
-        for i,llm in enumerate(self.llms):
+        for i, llm in enumerate(self.llms):
             try:
                 result = llm.invoke(messages)
                 break
             except Exception as e:
                 print(f"LLM {i} failed with error: {e}")
                 continue
-    
-        # result = self.llm.invoke(messages)
         
         # Safely extract content from result
         result_content = safe_get_content(result)
@@ -83,43 +102,24 @@ IMPORTANT NOTE: Do only 'current_task' at a time, other task will be done in nex
         if not result_content or len(result_content.strip()) < 10:
             result_content = "Prosecutor is analyzing the case and preparing arguments."
         
+        # Simplified workflow - only 2 steps
         if state["thought_step"] == 0:
             response = {
                 "messages": [HumanMessage(content=result_content, name="prosecutor")],
                 "next": "self",
-                "thought_step": state["thought_step"]+1,
-                "caller": "prosecutor"
+                "thought_step": state["thought_step"] + 1,
+                "caller": "prosecutor",
+                "iteration_count": iteration
             }
-        elif state["thought_step"] == 1 :
-            response = {
-                "messages": [HumanMessage(content=result_content, name="prosecutor")],
-                "next": "retriever",
-                "thought_step": 2,
-                "caller": "prosecutor"
-            }
-        elif state["thought_step"] == 2:
-            response = {
-                "messages": [HumanMessage(content=result_content, name="prosecutor")],
-                "next": self.is_web_search_needed(result_content),
-                "thought_step": 3,
-                "caller": "prosecutor"
-            }
-        elif state["thought_step"] == 3:
+        elif state["thought_step"] == 1:
             response = {
                 "messages": [HumanMessage(content=result_content, name="prosecutor")],
                 "next": "judge",
                 "thought_step": 0,
-                "caller": "prosecutor"
+                "caller": "prosecutor",
+                "iteration_count": iteration
             }
         else:
             raise ValueError("Invalid thought step")
             
         return response
-    
-    def is_web_search_needed(self, content: str) -> Literal["self", "web_searcher"]:
-        if re.search(r"none", content, re.IGNORECASE):
-            return "self"
-        else:
-            return "web_searcher"
-
-   

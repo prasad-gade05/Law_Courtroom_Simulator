@@ -6,6 +6,9 @@ class AgentState(MessagesState):
     next: str  # Where to route to next
     thought_step: Optional[int] = 0  # Current step in chain of thought
     caller: Optional[str] = None  # Who called the agent
+    iteration_count: Optional[int] = 0  # Track debate iterations
+    initial_retrieval_done: Optional[bool] = False  # Track if initial document fetch is complete
+    retrieved_context: Optional[str] = ""  # Store retrieved legal context for all agents
 
 
 def safe_get_content(obj, default: str = "") -> str:
