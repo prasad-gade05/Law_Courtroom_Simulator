@@ -58,29 +58,27 @@ def format_agent_output(agent_name: str, content, iteration: int):
         # Convert to string if it's not already
         content = str(content)
     
-    # Agent-specific symbols and colors
-    symbols = {
-        "judge": "⚖️ ",
-        "lawyer": "🛡️ ",
-        "prosecutor": "⚔️ ",
-        "retriever": "📚",
-        "kanoon_fetcher": "🔍",
-        "web_searcher": "🌐",
-        "verdict": "🏛️ "
+    # Agent-specific symbols and titles
+    agent_titles = {
+        "judge": ("⚖️ ", "JUDGE"),
+        "lawyer": ("🛡️ ", "DEFENSE LAWYER"),
+        "prosecutor": ("⚔️ ", "PROSECUTOR"),
+        "retriever": ("📚", "LEGAL RETRIEVER"),
+        "kanoon_fetcher": ("🔍", "KANOON CASE FETCHER"),
+        "web_searcher": ("🌐", "WEB RESEARCHER"),
+        "verdict": ("🏛️ ", "FINAL VERDICT")
     }
     
-    symbol = symbols.get(agent_name, "•")
+    symbol, title = agent_titles.get(agent_name, ("•", agent_name.upper()))
     
-    # Check for verdict (now safe since content is a string)
-    is_verdict = (agent_name == "verdict" or "Given Verdict" in content or 
-                  "VERDICT DELIVERED" in content.upper() or "GUILTY" in content.upper() or 
-                  "NOT GUILTY" in content.upper())
+    # Only check if this is verdict node (don't guess from content)
+    is_verdict = (agent_name == "verdict")
     
     print("\n" + "=" * 80)
-    if is_verdict or agent_name == "verdict":
-        print(f"🏛️  FINAL VERDICT - JUDGE - Iteration {iteration} 🏛️")
+    if is_verdict:
+        print(f"🏛️  FINAL VERDICT - Iteration {iteration} 🏛️")
     else:
-        print(f"{symbol} {agent_name.upper()} - Iteration {iteration}")
+        print(f"{symbol} {title} - Iteration {iteration}")
     print("=" * 80)
     
     # Wrap and display content
