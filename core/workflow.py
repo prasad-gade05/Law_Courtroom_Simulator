@@ -72,7 +72,10 @@ class TrialWorkflow:
         workflow.set_entry_point("kanoon_fetcher")
         workflow.add_edge("kanoon_fetcher", "document_summarizer")
         workflow.add_edge("document_summarizer", "initial_retriever")  # NEW: Fetch all docs first
-        workflow.add_edge("initial_retriever", "prosecutor")  # Then proceed to opening statements
+        workflow.add_edge("initial_retriever", "lawyer")  # FIX: Start with DEFENSE LAWYER for opening statement
+        
+        # After lawyer's opening, prosecutor responds, then judge moderates
+        # The judge will alternate between them based on conversation history
         
         # 3. Simplified routing - NO retriever/web_searcher calls during debate
         workflow.add_conditional_edges(

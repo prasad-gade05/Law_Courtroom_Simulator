@@ -100,8 +100,10 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
             
         """
         
-        # Get iteration count for context
+        # Get iteration count and retrieved context
         iteration = state.get("iteration_count", 0)
+        retrieved_context = state.get("retrieved_context", "")
+        retrieved_docs = state.get("retrieved_docs", [])
         
         # Safety check: Ensure thought_step is within bounds
         thought_steps = self.get_thought_steps()
@@ -153,7 +155,9 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
                 "caller": "judge",
-                "iteration_count": iteration
+                "iteration_count": iteration,
+                "retrieved_context": retrieved_context,
+                "retrieved_docs": retrieved_docs
             }
         elif state["thought_step"] == 1:
             # Evaluation step
@@ -162,7 +166,9 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
                 "caller": "judge",
-                "iteration_count": iteration
+                "iteration_count": iteration,
+                "retrieved_context": retrieved_context,
+                "retrieved_docs": retrieved_docs
             }
         elif state["thought_step"] == 2:
             # Decision step
@@ -171,7 +177,9 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                 "next": "self",
                 "thought_step": state["thought_step"]+1,
                 "caller": "judge",
-                "iteration_count": iteration
+                "iteration_count": iteration,
+                "retrieved_context": retrieved_context,
+                "retrieved_docs": retrieved_docs
             }
         elif state["thought_step"] == 3:
             # Final decision: Verdict OR route to next speaker
@@ -185,17 +193,22 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
                     "next": "END",
                     "thought_step": 0,
                     "caller": "judge",
-                    "iteration_count": next_iteration
+                    "iteration_count": next_iteration,
+                    "retrieved_context": retrieved_context,
+                    "retrieved_docs": retrieved_docs
                 }
             else:
                 # No verdict - determine next speaker from content
                 next_dest = self.extract_next_speaker(result_content, state)
+                print(f"[JUDGE] Final routing decision: next_dest = {next_dest}")
                 response = {
                     "messages": [HumanMessage(content=result_content, name="judge")],
                     "next": next_dest,
                     "thought_step": 0,
                     "caller": "judge",
-                    "iteration_count": next_iteration
+                    "iteration_count": next_iteration,
+                    "retrieved_context": retrieved_context,
+                    "retrieved_docs": retrieved_docs
                 }
         else:
             raise ValueError(f"Invalid thought step: {state['thought_step']}")
@@ -233,25 +246,47 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
             if len(parts) > 1:
                 speaker_text = parts[1].strip().split()[0]  # Get first word
                 if "lawyer" in speaker_text:
+                    print(f"[JUDGE] Found 'NEXT SPEAKER: lawyer' in content")
                     return "lawyer"
                 elif "prosecutor" in speaker_text:
+                    print(f"[JUDGE] Found 'NEXT SPEAKER: prosecutor' in content")
                     return "prosecutor"
         
         # Look for "the next speaker should be the [lawyer/prosecutor]"
         if "defense lawyer" in content_lower or ("next" in content_lower and "lawyer" in content_lower):
+            print(f"[JUDGE] Found 'defense lawyer' or 'next...lawyer' in content")
             return "lawyer"
         if "next" in content_lower and "prosecutor" in content_lower:
+            print(f"[JUDGE] Found 'next...prosecutor' in content")
             return "prosecutor"
         
         # Direct keyword search (with exclusion to avoid false positives)
         if "lawyer" in content_lower and "prosecutor" not in content_lower:
+            print(f"[JUDGE] Found 'lawyer' keyword only")
             return "lawyer"
         elif "prosecutor" in content_lower and "lawyer" not in content_lower:
+            print(f"[JUDGE] Found 'prosecutor' keyword only")
             return "prosecutor"
         
         # If no clear indication, check message history to alternate
+        print(f"[JUDGE] No explicit routing found, checking message history for alternation...")
         messages = state.get("messages", [])
         if messages:
+            # Debug: Print last few message names
+            print(f"[JUDGE] Total messages: {len(messages)}")
+            last_speakers = []
+            for msg in reversed(messages[-10:]):  # Check last 10 messages
+                msg_name = ""
+                if hasattr(msg, 'name'):
+                    msg_name = msg.name
+                elif isinstance(msg, dict) and 'name' in msg:
+                    msg_name = msg['name']
+                if msg_name:
+                    last_speakers.append(msg_name)
+            
+            print(f"[JUDGE] Last 10 speakers: {last_speakers}")
+            
+            # Now find the last non-judge speaker
             for msg in reversed(messages):
                 msg_name = ""
                 if hasattr(msg, 'name'):
