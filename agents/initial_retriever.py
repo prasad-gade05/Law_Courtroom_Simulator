@@ -3,6 +3,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
 from core.chroma_store import ChromaVectorStore
 from core.advanced_rag import RetrievalAugmentor
+from core.enhanced_rag_system import EnhancedRAGSystem
 from .base import AgentState, safe_get_content
 import os
 from dotenv import load_dotenv
@@ -44,7 +45,7 @@ Burden of proof in criminal cases India
 """
 
     def _create_retriever(self, private=False):
-        """Create ChromaDB vector store with advanced RAG capabilities"""
+        """Create ChromaDB vector store with enhanced RAG capabilities"""
         if private:
             vector_store = ChromaVectorStore('private', './private_documents')
         else:
@@ -63,11 +64,12 @@ Burden of proof in criminal cases India
             else:
                 documents = []
         except Exception as e:
-            print(f"[WARNING] Could not get documents for BM25: {e}")
+            print(f"[WARNING] Could not get documents: {e}")
             documents = []
         
-        augmentor = RetrievalAugmentor(base_retriever, documents)
-        return augmentor
+        # Use enhanced RAG system with all improvements
+        enhanced_rag = EnhancedRAGSystem(base_retriever, documents)
+        return enhanced_rag
 
     async def process(self, state: AgentState) -> AgentState:
         """Perform comprehensive initial document retrieval"""
@@ -106,48 +108,58 @@ Burden of proof in criminal cases India
             for i, q in enumerate(queries, 1):
                 print(f"  {i}. {q}")
             
-            # Retrieve documents for all queries
+            # Retrieve documents for all queries using enhanced RAG
             all_retrieved_docs = []
+            all_formatted_contexts = []
             
             for query in queries[:5]:  # Limit to 5 queries max
                 print(f"\n[RETRIEVAL] Query: {query[:80]}...")
                 
-                # Try public retriever (IPC, case law, etc.)
+                # Try public retriever (IPC, case law, etc.) with enhanced RAG
                 try:
-                    docs, meta = self.public_retriever.retrieve_and_compress(
-                        query, k=8, top_k_compressed=4
+                    formatted_context, docs, meta = self.public_retriever.retrieve_and_structure(
+                        query, k=10, case_description=case_description[:500]
                     )
                     all_retrieved_docs.extend(docs)
+                    all_formatted_contexts.append(formatted_context)
                     print(f"  Public: Retrieved {meta['retrieved_count']}, compressed to {meta['compressed_count']}")
+                    print(f"  Context size: {meta['context_size']} chars")
                 except Exception as e:
                     print(f"  Public retrieval error: {e}")
                 
                 # Try private retriever (user's case files)
                 try:
-                    docs, meta = self.private_retriever.retrieve_and_compress(
-                        query, k=5, top_k_compressed=3
+                    formatted_context, docs, meta = self.private_retriever.retrieve_and_structure(
+                        query, k=5, case_description=case_description[:500]
                     )
                     all_retrieved_docs.extend(docs)
+                    all_formatted_contexts.append(formatted_context)
                     print(f"  Private: Retrieved {meta['retrieved_count']}, compressed to {meta['compressed_count']}")
                 except Exception as e:
                     print(f"  Private retrieval error: {e}")
             
-            # Format all retrieved context
-            retrieved_context = self._format_comprehensive_context(all_retrieved_docs)
+            # Combine all formatted contexts
+            retrieved_context = "\n\n".join(all_formatted_contexts)
             
             print(f"\n[INITIAL RETRIEVAL] Total documents retrieved: {len(all_retrieved_docs)}")
             print(f"[INITIAL RETRIEVAL] Context size: {len(retrieved_context)} characters")
             print("="*60)
             
             # Create informative message
-            summary_msg = f"""[LEGAL CONTEXT RETRIEVED]
+            summary_msg = f"""[ENHANCED LEGAL CONTEXT RETRIEVED]
+
+✓ Intelligent chunking applied - legal sections preserved
+✓ Re-ranked by legal specificity (IPC, case law, precedents)
+✓ Structured format with categories (IPC, Cases, Evidence, etc.)
+✓ Context compressed intelligently - key citations preserved
 
 Retrieved comprehensive legal information covering:
-- {len(queries)} legal topics
-- {len(all_retrieved_docs)} relevant document chunks
+- {len(queries)} legal topics analyzed
+- {len(all_retrieved_docs)} relevant document chunks (re-ranked & compressed)
 - Total context: {len(retrieved_context)} characters
 
-This context will be available to all agents throughout the trial.
+This context is structured for easy reference with citation markers [IPC-1], [CAS-2], etc.
+All agents MUST cite sources when making legal arguments.
 Proceeding to opening statements..."""
             
             return {
@@ -157,6 +169,7 @@ Proceeding to opening statements..."""
                 "caller": "initial_retriever",
                 "initial_retrieval_done": True,
                 "retrieved_context": retrieved_context,
+                "retrieved_docs": all_retrieved_docs,  # Store docs for verification
                 "iteration_count": state.get("iteration_count", 0)
             }
             
@@ -197,14 +210,18 @@ Proceeding to opening statements..."""
         print("[FALLBACK] Using fallback queries...")
         
         all_docs = []
+        formatted_contexts = []
         for query in fallback_queries:
             try:
-                docs, _ = self.public_retriever.retrieve_and_compress(query, k=5, top_k_compressed=3)
+                formatted_context, docs, meta = self.public_retriever.retrieve_and_structure(
+                    query, k=5, case_description=case_description[:500]
+                )
                 all_docs.extend(docs)
+                formatted_contexts.append(formatted_context)
             except:
                 pass
         
-        context = self._format_comprehensive_context(all_docs)
+        context = "\n\n".join(formatted_contexts) if formatted_contexts else "Basic legal context retrieved."
         
         return {
             "messages": [HumanMessage(content="[LEGAL CONTEXT] Basic legal context retrieved. Proceeding to trial...", name="initial_retriever")],
@@ -213,5 +230,6 @@ Proceeding to opening statements..."""
             "caller": "initial_retriever",
             "initial_retrieval_done": True,
             "retrieved_context": context,
+            "retrieved_docs": all_docs,
             "iteration_count": state.get("iteration_count", 0)
         }
