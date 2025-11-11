@@ -96,6 +96,7 @@ st.markdown("""
         border-left: 3px solid #667eea;
         background: #f8f9fa;
         border-radius: 5px;
+        color: #1f1f1f;
     }
     
     .status-badge {
@@ -255,40 +256,48 @@ with st.sidebar:
     
     st.divider()
     
-    # Workflow metrics
+    # Workflow metrics - using placeholders for real-time updates
     st.header("📊 Simulation Metrics")
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown(f"""
-        <div class="metric-container">
-            <div class="metric-value">{st.session_state.current_iteration}</div>
-            <div class="metric-label">Iteration</div>
-        </div>
-        """, unsafe_allow_html=True)
+    metrics_placeholder = st.empty()
     
-    with col2:
-        st.markdown(f"""
-        <div class="metric-container">
-            <div class="metric-value">{st.session_state.total_agents_called}</div>
-            <div class="metric-label">Agents Called</div>
-        </div>
-        """, unsafe_allow_html=True)
+    # Initial metrics display
+    with metrics_placeholder.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"""
+            <div class="metric-container">
+                <div class="metric-value">{st.session_state.current_iteration}</div>
+                <div class="metric-label">Iteration</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f"""
+            <div class="metric-container">
+                <div class="metric-value">{st.session_state.total_agents_called}</div>
+                <div class="metric-label">Agents Called</div>
+            </div>
+            """, unsafe_allow_html=True)
     
     st.divider()
     
-    # Timeline
+    # Timeline - using placeholder for real-time updates
     st.header("⏱️ Timeline")
-    if st.session_state.timeline:
-        for item in st.session_state.timeline[-10:]:  # Show last 10 items
-            st.markdown(f"""
-            <div class="timeline-item">
-                <strong>{item['agent']}</strong><br>
-                <small>{item['time']}</small>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("Timeline will appear here during simulation")
+    timeline_placeholder = st.empty()
+    
+    # Initial timeline display
+    with timeline_placeholder.container():
+        if st.session_state.timeline:
+            for item in st.session_state.timeline[-10:]:  # Show last 10 items
+                st.markdown(f"""
+                <div class="timeline-item">
+                    <strong>{item['agent']}</strong><br>
+                    <small>{item['time']}</small>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Timeline will appear here during simulation")
 
 # Main content area
 tab1, tab2, tab3 = st.tabs(["🎯 Case Input", "🏛️ Live Courtroom", "📋 Full Transcript"])
@@ -411,6 +420,36 @@ with tab2:
                                     'agent': format_agent_name(agent_name),
                                     'time': datetime.now().strftime("%H:%M:%S")
                                 })
+                                
+                                # Update metrics in sidebar in real-time
+                                with metrics_placeholder.container():
+                                    col1, col2 = st.columns(2)
+                                    with col1:
+                                        st.markdown(f"""
+                                        <div class="metric-container">
+                                            <div class="metric-value">{st.session_state.current_iteration}</div>
+                                            <div class="metric-label">Iteration</div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                    
+                                    with col2:
+                                        st.markdown(f"""
+                                        <div class="metric-container">
+                                            <div class="metric-value">{st.session_state.total_agents_called}</div>
+                                            <div class="metric-label">Agents Called</div>
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                
+                                # Update timeline in sidebar in real-time
+                                with timeline_placeholder.container():
+                                    if st.session_state.timeline:
+                                        for item in st.session_state.timeline[-10:]:  # Show last 10 items
+                                            st.markdown(f"""
+                                            <div class="timeline-item">
+                                                <strong>{item['agent']}</strong><br>
+                                                <small>{item['time']}</small>
+                                            </div>
+                                            """, unsafe_allow_html=True)
                                 
                                 # Add to history
                                 st.session_state.messages_history.append({
