@@ -442,8 +442,8 @@ with tab2:
                                     </div>
                                     """, unsafe_allow_html=True)
                                 
-                                # Check if workflow is complete
-                                if status == "done" or agent_name == "verdict":
+                                # Check if workflow is complete - only break on done status
+                                if status == "done":
                                     progress_bar.progress(100)
                                     status_placeholder.markdown('<span class="status-badge status-complete">✅ Simulation Complete</span>', unsafe_allow_html=True)
                                     st.session_state.workflow_started = False
