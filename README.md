@@ -6,6 +6,34 @@ AI-powered legal courtroom simulator using multi-agent orchestration with LangGr
 
 ## How to Run
 
+### Environment Setup
+
+Before running the application, create a `.env` file in the project root with the following configuration:
+
+```bash
+# Ollama Configuration
+OLLAMA_MODEL=gpt-oss:120b-cloud
+
+# External APIs
+SERPER_API_KEY=your_serper_api_key_here
+KANOON_API_KEY=your_kanoon_api_key_here
+```
+
+**Important:** To use the `gpt-oss:120b-cloud` model:
+
+1. Visit **https://ollama.com/**
+2. Click **Sign In** and create an account or log in
+3. Open **Ollama Desktop** application
+4. Sign in to Ollama Desktop with your account credentials
+5. The cloud model will be accessible after authentication
+
+**API Keys:**
+
+- **SERPER_API_KEY**: Get your key from [Serper.dev](https://serper.dev/)
+- **KANOON_API_KEY**: Get your key from [Kanoon.com](https://kanoon.com/)
+
+---
+
 ### Method 1: Using Batch Files (Recommended)
 
 **First-time setup:**
@@ -284,15 +312,13 @@ law_courtroom_simulator/
 
 ---
 
-## Configuration
-
 ### LLM Providers
 
 The system supports multiple LLM providers with automatic fallback:
 
 - Groq (default)
 - OpenAI
-- Ollama (local)
+- Ollama (local/cloud)
 
 Configure via environment variables or modify `app.py`.
 
