@@ -1,0 +1,36 @@
+﻿Case File
+________________
+
+
+Case Title
+State vs. Rohan Malhotra
+________________
+
+
+Case Summary
+Rohan Malhotra, a 28-year-old entrepreneur, is accused of defamation under Section 499 of the Indian Penal Code (IPC) and cyber harassment under the Information Technology Act, 2000. The case pertains to Rohan allegedly posting defamatory and harassing statements about Meera Sharma, a 30-year-old journalist, on social media platforms. Rohan denies the charges, claiming his account was hacked at the time the posts were made.
+________________
+
+
+Case Details
+Incident Description:
+ On May 20, 2024, Meera Sharma filed a complaint with the cybercrime division, alleging that Rohan Malhotra made a series of defamatory posts about her on Twitter and Instagram. The posts accused Meera of biased reporting, bribery, and professional misconduct, damaging her reputation among peers and the public.
+Rohan Malhotra has stated that he did not make the posts and believes his accounts were compromised. He claims that he noticed suspicious activity on his accounts around the time the posts were made.
+Timeline of Events:
+1. May 19, 2024, 8:00 PM: First defamatory tweet posted.
+2. May 19, 2024, 8:30 PM: Instagram story containing similar allegations shared.
+3. May 20, 2024, 9:00 AM: Meera Sharma files a complaint.
+4. May 20, 2024, 11:00 AM: Rohan reports to the cybercrime division, claiming his accounts were hacked.
+Evidence:
+1. Screenshots of Posts: Captured by Meera Sharma before they were deleted.
+2. Digital Forensics Report: Analysis of Rohan’s devices shows no direct evidence of his involvement but logs indicate suspicious login activity from an unknown IP address.
+3. Witness Testimony: Ravi Verma, a friend of Rohan, states that Rohan mentioned concerns about his social media accounts prior to the incident.
+4. Impact Statement: Meera Sharma has submitted a statement detailing the professional and emotional impact caused by the defamatory posts.
+Charges:
+1. Section 499, IPC (Defamation):
+ Whoever, by words, either spoken or intended to be read, or by signs or visible representations, makes or publishes any imputation concerning any person intending to harm, or knowing or having reason to believe that such imputation will harm, the reputation of such person, is said to defame that person.
+
+2. Section 66A, IT Act (Cyber Harassment):
+ Punishment for sending offensive messages through communication service, etc., which cause annoyance or insult.
+
+________________

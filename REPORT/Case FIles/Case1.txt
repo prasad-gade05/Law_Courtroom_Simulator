@@ -1,0 +1,24 @@
+Case Title
+Shreya Singhal vs. Union of India
+Case Summary
+Shreya Singhal, a law student, filed a Public Interest Litigation (PIL) challenging the constitutionality of Section 66A of the Information Technology Act, 2000. The case was initiated following the arrest of two women in Maharashtra for a Facebook post critical of a political leader's funeral. Singhal's petition argued that Section 66A was a tool for suppressing freedom of speech and was being used to make arbitrary arrests. Several other petitions from individuals and organizations affected by this law were also consolidated with this case.
+Case Details
+Incident Description:
+On November 18, 2012, Shaheen Dhada made a Facebook post questioning the shutdown of Mumbai for the funeral of politician Bal Thackeray. Her friend, Rinu Srinivasan, 'liked' the post. The Palghar police arrested both women under Section 295A of the Indian Penal Code (deliberate and malicious acts intended to outrage religious feelings) and Section 66A of the IT Act. Although the charges were later dropped following a public outcry, the incident ignited a national debate on the misuse of Section 66A. This prompted Shreya Singhal to file a writ petition in the Supreme Court challenging the law's constitutional validity.
+Timeline of Events:
+November 18, 2012: Shaheen Dhada publishes the Facebook post, which Rinu Srinivasan 'likes'.
+November 19, 2012: Both women are arrested by the Palghar police.
+November 20, 2012: The women are granted bail.
+November 30, 2012: Shreya Singhal files the writ petition in the Supreme Court.
+January 2013: The Supreme Court issues a notice to the central government.
+May 16, 2013: The Supreme Court advises that no person should be arrested under Section 66A without permission from a senior police officer.
+February 26, 2015: The final hearing in the case is concluded.
+Evidence:
+Screenshots of the Post: The original Facebook post and the 'like'.
+Arrest Records: First Information Report (FIR) and arrest warrants from the Palghar police.
+Writ Petitions: Copies of petitions detailing misuse of Section 66A.
+Government Affidavits: The central government's defense of the law.
+Legal Arguments: Submissions from both the petitioners' counsel and the Attorney General.
+Charges:
+Section 66A, IT Act (Punishment for sending offensive messages through communication service, etc.): The provision criminalized sending information that is "grossly offensive" or has a "menacing character," among other things.
+Constitutional Challenge: The petition argued that Section 66A violated Article 19(1)(a) (freedom of speech and expression) and Article 14 (right to equality) of the Constitution of India, contending it was vague and arbitrary.
