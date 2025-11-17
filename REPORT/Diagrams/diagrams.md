@@ -487,7 +487,7 @@ Legend:
 
 Color Codes:
 Blue     = Defense Lawyer
-Red      = Prosecutor  
+Red      = Prosecutor
 Yellow   = Judge
 Purple   = Verdict
 Green    = Utility Agents
@@ -815,7 +815,7 @@ Average Citations per Response by Agent Type
     - Lawyer:     0.18 citations/sentence
     - Prosecutor: 0.22 citations/sentence
     - Judge:      0.12 citations/sentence
-    
+
     System Average: 0.20 citations/sentence (Target: > 0.15)
 ```
 
@@ -924,21 +924,21 @@ Iter 15-16: VERDICT PHASE
      ╔════════════════════════════════════════════════════════╗
      ║           VERDICT: NOT GUILTY                          ║
      ╚════════════════════════════════════════════════════════╝
-     
+
      Reasoning:
      1. Prosecution failed to prove mens rea beyond reasonable doubt
      2. Technical evidence (foreign IPs, unusual patterns) not rebutted
      3. Defense established plausible alternative explanation
      4. IPC Section 499 requires criminal intent - not established
      5. IT Act provisions support account compromise defense
-     
+
      Confidence: ▓▓▓▓▓▓▓░░░ 72%
-     
+
      Evidence Analysis:
      ✓ Technical logs favor defense
      ✓ Timeline inconsistencies support compromise claim
      ✗ Prosecution lacked strong rebuttal evidence
-     
+
      Legal Arguments Assessment:
      Defense: Strong legal foundation with proper citations
      Prosecution: Circumstantial, insufficient to overcome doubt
@@ -969,3 +969,4 @@ Legend:
 ░░░░ Preparation/Utility   ████ Defense Lawyer
 ▒▒▒▒ Judge                 ████ Prosecutor
 ⚡ Key turning point       ▓▓▓▓ Confidence level (visual)
+```
