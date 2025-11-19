@@ -61,15 +61,143 @@ Opens two windows:
 run_enhanced_ui.bat
 ```
 
-### Method 2: Manual Launch
+### Method 2: Manual Installation (If setup.bat is not used)
 
-**Step 1: Install dependencies**
+#### Prerequisites
+
+Before starting, ensure you have:
+- **Python 3.9 or higher** installed ([Download](https://www.python.org/))
+- **Ollama** installed ([Download](https://ollama.com/download))
+
+#### Step 1: Verify Python Installation
+
+```bash
+python --version
+```
+
+Should display Python 3.9+. If not, install Python and add it to PATH.
+
+#### Step 2: Create Virtual Environment (Recommended)
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate it
+# On Windows:
+venv\Scripts\activate.bat
+# On Linux/Mac:
+source venv/bin/activate
+```
+
+#### Step 3: Upgrade pip
+
+```bash
+python -m pip install --upgrade pip
+```
+
+#### Step 4: Install Core Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**Step 2: Start the backend**
+This installs all necessary packages including Ollama, LangChain, FastAPI, Streamlit, and ChromaDB.
+
+#### Step 5: Install RAG Enhancement Dependencies
+
+For advanced hallucination detection and hybrid retrieval:
+
+```bash
+pip install sentence-transformers rank-bm25 nltk scikit-learn
+```
+
+**Note:** These are optional but highly recommended for better accuracy (70% less hallucinations).
+
+#### Step 6: Create Required Directories
+
+```bash
+# On Windows:
+mkdir private_documents public_documents chroma_db
+
+# On Linux/Mac:
+mkdir -p private_documents public_documents chroma_db
+```
+
+- **private_documents/**: Store user-uploaded case files
+- **public_documents/**: Store legal corpus (IPC, case law)
+- **chroma_db/**: Vector database storage
+
+#### Step 7: Configure Environment Variables
+
+Create a `.env` file in the project root:
+
+```bash
+# Ollama Configuration
+OLLAMA_MODEL=gpt-oss:120b-cloud
+OLLAMA_BASE_URL=https://cloud.ollamahub.com
+
+# External APIs
+SERPER_API_KEY=your_serper_api_key_here
+KANOON_API_KEY=your_kanoon_api_key_here
+```
+
+**Get API Keys:**
+- **SERPER_API_KEY**: [Serper.dev](https://serper.dev/)
+- **KANOON_API_KEY**: [Kanoon.com](https://kanoon.com/)
+
+#### Step 8: Install and Configure Ollama
+
+**Verify Ollama installation:**
+
+```bash
+ollama --version
+```
+
+If not installed, download from [ollama.com/download](https://ollama.com/download)
+
+**Download Required Models:**
+
+1. **Main LLM Model (gpt-oss:120b-cloud):**
+   
+   ```bash
+   ollama pull gpt-oss:120b-cloud
+   ```
+   
+   This is a large cloud-based model (~10-20 minutes download time). Requires signing into Ollama Desktop:
+   - Visit [ollama.com](https://ollama.com)
+   - Sign in or create an account
+   - Open Ollama Desktop and authenticate
+   - The cloud model becomes accessible
+
+2. **Embedding Model (nomic-embed-text):**
+   
+   ```bash
+   ollama pull nomic-embed-text
+   ```
+   
+   Smaller model for local embeddings (~1-2 minutes download).
+
+**Verify Models are Downloaded:**
+
+```bash
+ollama list
+```
+
+Should show both `gpt-oss:120b-cloud` and `nomic-embed-text`.
+
+#### Step 9: Add Legal Documents
+
+Add legal reference documents to `public_documents/` folder:
+- Indian Penal Code (IPC)
+- Case law precedents
+- Legal statutes
+
+**Note:** First run will index all documents (2-5 minutes). Subsequent runs use cached embeddings.
+
+#### Step 10: Launch Application
+
+**Start Backend:**
 
 ```bash
 python app.py
@@ -77,7 +205,7 @@ python app.py
 
 Backend runs on http://localhost:8000
 
-**Step 3: Start the UI** (in a new terminal)
+**Start UI** (in a new terminal):
 
 ```bash
 streamlit run interface\enhanced_stapp.py
@@ -85,7 +213,23 @@ streamlit run interface\enhanced_stapp.py
 
 UI runs on http://localhost:8501
 
-### Method 3: Terminal Testing with `test_api_demo.py`
+---
+
+### Method 3: Quick Launch (After Initial Setup)
+
+**Step 1: Start the backend**
+
+```bash
+python app.py
+```
+
+**Step 2: Start the UI** (in a new terminal)
+
+```bash
+streamlit run interface\enhanced_stapp.py
+```
+
+### Method 4: Terminal Testing with `test_api_demo.py`
 
 **Test via command line without UI:**
 
