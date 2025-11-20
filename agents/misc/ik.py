@@ -38,6 +38,24 @@ class IKApi:
                 connection = http.client.HTTPSConnection(self.basehost)
                 connection.request('POST', url, headers=self.headers)
                 response = connection.getresponse()
+                
+                # Verify HTTP status code
+                if response.status != 200:
+                    self.logger.error(f"API call failed with status: {response.status} {response.reason}")
+                    if response.status == 429:
+                        self.logger.info("Rate limit hit, waiting 5 seconds...")
+                        time.sleep(5)
+                    elif response.status in [401, 403]:
+                        self.logger.error("Authentication error: Please verify your KANOON_API_KEY")
+                        return None
+                    
+                    if attempt < max_retries - 1:
+                        self.logger.info(f"Retrying API call (attempt {attempt + 2}/{max_retries})...")
+                        time.sleep(2)
+                        continue
+                    else:
+                        return None
+                
                 return response.read()
             
             except ssl.SSLError as e:
