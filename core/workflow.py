@@ -135,6 +135,8 @@ class TrialWorkflow:
                 public_store.reset_collection()
                 # Run document indexing on the clean collection to ingest the new summaries
                 public_store._index_documents()
+                # Update the retriever's vectorstore reference to the new one to prevent Collection does not exist errors
+                self.initial_retriever.public_retriever.vector_retriever.vectorstore = public_store.vectorstore
                 print("[WORKFLOW] Successfully reset and re-indexed public collection with summaries")
             else:
                 print("[WORKFLOW] Public store not found - skipping re-indexing")
