@@ -178,7 +178,8 @@ class FetchingAgent:
         print("Extracted Keywords:")
         keywords = keywords_result["keywords"]
         for idx, keyword in enumerate(keywords, 1):
-            print(f"  [{idx}] {keyword[:100]}")  # Truncate long keywords
+            safe_keyword = keyword[:100].encode('ascii', errors='replace').decode('ascii')
+            print(f"  [{idx}] {safe_keyword}")  # Truncate long keywords
 
         # Specify max_docs per keyword (reduced for faster demo)
         MAX_DOCS_PER_KEYWORD = 1
@@ -192,7 +193,8 @@ class FetchingAgent:
 
         all_doc_ids = []
         for idx, keyword in enumerate(keywords[:MAX_KEYWORDS], 1):
-            print(f"\n[{idx}/{MAX_KEYWORDS}] Searching keyword: {keyword[:80]}...")
+            safe_keyword = keyword[:80].encode('ascii', errors='replace').decode('ascii')
+            print(f"\n[{idx}/{MAX_KEYWORDS}] Searching keyword: {safe_keyword}...")
             keyword_start_time = time.time()
             try:
                 doc_ids = ikapi.save_search_results(keyword, max_docs=MAX_DOCS_PER_KEYWORD)
