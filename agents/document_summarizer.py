@@ -310,6 +310,8 @@ Create a unified summary (500-800 words) covering:
         total_summary_size = 0
         
         for idx, doc_file in enumerate(document_files, 1):
+            if "_summary" in doc_file.name:
+                continue
             print(f"\n[{idx}/{len(document_files)}] Processing: {doc_file.name}")
             
             try:
