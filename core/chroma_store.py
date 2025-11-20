@@ -5,7 +5,7 @@ import chromadb
 from chromadb.config import Settings
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import OllamaEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from core.enhanced_rag_system import IntelligentChunker
 from pathlib import Path
 import time
 from typing import Optional
@@ -63,15 +63,9 @@ class ChromaVectorStore:
             self.embeddings = OllamaEmbeddings(model=self.embedding_model)
             print(" [OK]")
             
-            # Initialize text splitter with better parameters for legal documents
-            print(f"Initializing text splitter (chunk_size=1000, overlap=200)...", end='', flush=True)
-            self.text_splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,  # Smaller chunks for better retrieval precision
-                chunk_overlap=200,  # More overlap to preserve context
-                length_function=len,
-                separators=["\n\n", "\n", ". ", " ", ""],  # Legal document separators
-                keep_separator=True  # Keep separators for better context
-            )
+            # Initialize custom legal text chunker
+            print(f"Initializing Intelligent Chunker (chunk_size=1000, overlap=200)...", end='', flush=True)
+            self.chunker = IntelligentChunker(chunk_size=1000, chunk_overlap=200)
             print(" [OK]")
             
             # Initialize ChromaDB client with persistence
@@ -187,28 +181,30 @@ class ChromaVectorStore:
                 print(f" [OK] ({len(text)} characters)")
                 
                 if text.strip():
-                    # Split into chunks
-                    print(f"   Splitting into chunks...", end='', flush=True)
-                    chunks = self.text_splitter.split_text(text)
-                    print(f" [OK] ({len(chunks)} chunks)")
+                    # Split into chunks using custom IntelligentChunker
+                    print(f"   Splitting into chunks using IntelligentChunker...", end='', flush=True)
+                    chunk_docs = self.chunker.chunk_document(text, metadata={
+                        "source": str(doc_file),
+                        "filename": doc_file.name
+                    })
+                    print(f" [OK] ({len(chunk_docs)} chunks)")
                     
                     # Create metadata for each chunk with enhanced information
                     print(f"   Creating metadata...", end='', flush=True)
-                    for i, chunk in enumerate(chunks):
-                        all_texts.append(chunk)
+                    for i, doc in enumerate(chunk_docs):
+                        all_texts.append(doc.page_content)
                         
-                        # Enhanced metadata for better retrieval
+                        # Enhanced metadata for better retrieval, merging chunker metadata (like section_header)
                         metadata = {
-                            "source": str(doc_file),
-                            "filename": doc_file.name,
+                            **doc.metadata,
                             "chunk_index": i,
-                            "total_chunks": len(chunks),
-                            "chunk_size": len(chunk),
-                            "document_type": self._infer_document_type(doc_file.name, chunk),
+                            "total_chunks": len(chunk_docs),
+                            "chunk_size": len(doc.page_content),
+                            "document_type": self._infer_document_type(doc_file.name, doc.page_content),
                         }
                         
                         # Extract key entities from chunk (IPC sections, case names, etc.)
-                        entities = self._extract_legal_entities(chunk)
+                        entities = self._extract_legal_entities(doc.page_content)
                         if entities:
                             metadata["legal_entities"] = ", ".join(entities)
                         
@@ -417,6 +413,7 @@ if __name__ == "__main__":
     
     print(f"\nFound {len(result)} results:")
     for i, doc in enumerate(result, 1):
-        print(f"\n--- Result {i} ---")
-        print(f"Content: {doc.page_content[:200]}...")
+        # Safe print for different terminal encodings (e.g. Windows cp1252)
+        safe_content = doc.page_content[:200].encode('ascii', errors='replace').decode('ascii')
+        print(f"Content: {safe_content}...")
         print(f"Metadata: {doc.metadata}")
