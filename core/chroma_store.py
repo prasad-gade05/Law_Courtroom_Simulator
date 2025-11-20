@@ -50,6 +50,16 @@ class ChromaVectorStore:
         # Ensure persist directory exists
         Path(self.persist_directory).mkdir(parents=True, exist_ok=True)
         
+        # Enable WAL mode on SQLite database to prevent concurrent write lock contention
+        db_file = Path(self.persist_directory) / "chroma.sqlite3"
+        import sqlite3
+        try:
+            conn = sqlite3.connect(str(db_file))
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.close()
+        except Exception as e:
+            pass
+        
         print(f"\n{'='*60}")
         print(f"Initializing ChromaVectorStore: '{self.name}'")
         print(f"{'='*60}")
