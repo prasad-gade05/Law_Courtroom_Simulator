@@ -106,14 +106,16 @@ Burden of proof in criminal cases India
             
             print(f"\n[INITIAL RETRIEVAL] Generated {len(queries)} queries:")
             for i, q in enumerate(queries, 1):
-                print(f"  {i}. {q}")
+                safe_q = q.encode('ascii', errors='replace').decode('ascii')
+                print(f"  {i}. {safe_q}")
             
             # Retrieve documents for all queries using enhanced RAG
             all_retrieved_docs = []
             all_formatted_contexts = []
             
             for query in queries[:5]:  # Limit to 5 queries max
-                print(f"\n[RETRIEVAL] Query: {query[:80]}...")
+                safe_query = query[:80].encode('ascii', errors='replace').decode('ascii')
+                print(f"\n[RETRIEVAL] Query: {safe_query}...")
                 
                 # Try public retriever (IPC, case law, etc.) with enhanced RAG
                 try:
