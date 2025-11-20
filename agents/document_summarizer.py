@@ -189,11 +189,11 @@ Provide a concise summary (200-300 words) of the key legal information in this s
             
             if summary:
                 chunk_summaries.append(f"**Section {idx}:**\n{summary}")
-                print(f" ✓ ({len(summary)} chars)")
+                print(f" [OK] ({len(summary)} chars)")
             else:
                 # Fallback: use first 500 chars of chunk
                 chunk_summaries.append(f"**Section {idx}:**\n{chunk[:500]}...")
-                print(f" ! (fallback)")
+                print(f" [FALLBACK]")
         
         # Combine all chunk summaries
         combined = "\n\n".join(chunk_summaries)
