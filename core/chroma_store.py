@@ -31,7 +31,8 @@ class ChromaVectorStore:
         name: str, 
         path: str,
         embedding_model: str = None,
-        persist_directory: Optional[str] = None
+        persist_directory: Optional[str] = None,
+        skip_indexing: bool = False
     ):
         self.name = name
         self.path = path
@@ -98,16 +99,38 @@ class ChromaVectorStore:
                 print(f"\n[CACHE] Found existing vector store with {existing_count} embeddings")
                 print(f"[CACHE] Skipping re-indexing (data already cached)")
                 print(f"   Delete '{self.persist_directory}' folder to force re-indexing")
-            else:
+            elif not skip_indexing:
                 print(f"\n[NEW] No existing data found - will index documents")
                 # Process and index documents from path
                 self._index_documents()
+            else:
+                print(f"\n[NEW] No existing data found - skipping indexing as requested")
             
             print(f"\nChromaVectorStore '{self.name}' initialized successfully!")
             print(f"{'='*60}\n")
             
         except Exception as e:
             raise RuntimeError(f"Failed to initialize ChromaVectorStore: {str(e)}")
+
+    def reset_collection(self):
+        """
+        Safely reset/clear the vector store collection.
+        This deletes the existing collection programmatically to trigger re-indexing
+        on next initialization, avoiding unsafe manual folder deletion issues.
+        """
+        try:
+            print(f"Resetting vector store collection '{self.collection_name}'...", end='', flush=True)
+            self.chroma_client.delete_collection(self.collection_name)
+            # Recreate vectorstore wrapper to make sure it's initialized on the clean empty database
+            self.vectorstore = Chroma(
+                client=self.chroma_client,
+                collection_name=self.collection_name,
+                embedding_function=self.embeddings,
+                persist_directory=self.persist_directory,
+            )
+            print(" [OK]")
+        except Exception as e:
+            print(f" [FAILED] Error: {e}")
 
     def _index_documents(self):
         """

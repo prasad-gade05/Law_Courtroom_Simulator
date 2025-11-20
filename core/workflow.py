@@ -127,16 +127,16 @@ class TrialWorkflow:
         result = await self.document_summarizer.process(state)
         
         # After summarization, we need to trigger vector database re-indexing
-        # by deleting the chroma_db cache
+        # by safely resetting the chroma public collection programmatically
         print("[WORKFLOW] Triggering vector database re-indexing...")
         try:
-            import shutil
-            chroma_path = "chroma_db/public"
-            if os.path.exists(chroma_path):
-                shutil.rmtree(chroma_path)
-                print(f"[WORKFLOW] Deleted {chroma_path} - will re-index with summaries on next retrieval")
+            from core.chroma_store import ChromaVectorStore
+            # Initialize with skip_indexing=True to avoid double indexing during setup
+            public_db = ChromaVectorStore('public', './public_documents', skip_indexing=True)
+            public_db.reset_collection()
+            print("[WORKFLOW] Successfully reset public collection - will re-index with summaries on next retrieval")
         except Exception as e:
-            print(f"[WORKFLOW] Could not delete chroma cache: {e}")
+            print(f"[WORKFLOW] Could not reset public vector collection: {e}")
         
         return result
     
