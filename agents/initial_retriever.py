@@ -68,7 +68,7 @@ Burden of proof in criminal cases India
             documents = []
         
         # Use enhanced RAG system with all improvements
-        enhanced_rag = EnhancedRAGSystem(base_retriever, documents)
+        enhanced_rag = EnhancedRAGSystem(base_retriever, documents, vector_store=vector_store)
         return enhanced_rag
 
     async def process(self, state: AgentState) -> AgentState:

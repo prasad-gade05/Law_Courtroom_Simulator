@@ -127,16 +127,19 @@ class TrialWorkflow:
         result = await self.document_summarizer.process(state)
         
         # After summarization, we need to trigger vector database re-indexing
-        # by safely resetting the chroma public collection programmatically
+        # by safely resetting the active Chroma connection collection and indexing the new documents
         print("[WORKFLOW] Triggering vector database re-indexing...")
         try:
-            from core.chroma_store import ChromaVectorStore
-            # Initialize with skip_indexing=True to avoid double indexing during setup
-            public_db = ChromaVectorStore('public', './public_documents', skip_indexing=True)
-            public_db.reset_collection()
-            print("[WORKFLOW] Successfully reset public collection - will re-index with summaries on next retrieval")
+            public_store = self.initial_retriever.public_retriever.vector_store
+            if public_store:
+                public_store.reset_collection()
+                # Run document indexing on the clean collection to ingest the new summaries
+                public_store._index_documents()
+                print("[WORKFLOW] Successfully reset and re-indexed public collection with summaries")
+            else:
+                print("[WORKFLOW] Public store not found - skipping re-indexing")
         except Exception as e:
-            print(f"[WORKFLOW] Could not reset public vector collection: {e}")
+            print(f"[WORKFLOW] Could not reset/re-index public vector collection: {e}")
         
         return result
     

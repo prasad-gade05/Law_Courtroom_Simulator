@@ -604,9 +604,10 @@ class IntelligentContextCompressor:
 class EnhancedRAGSystem:
     """Main enhanced RAG system coordinating all improvements"""
     
-    def __init__(self, vector_retriever, documents: List[Document] = None):
+    def __init__(self, vector_retriever, documents: List[Document] = None, vector_store = None):
         self.vector_retriever = vector_retriever
         self.documents = documents or []
+        self.vector_store = vector_store
         
         # Initialize all components
         self.chunker = IntelligentChunker()
