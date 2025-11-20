@@ -6,7 +6,14 @@ from rich.panel import Panel
 from rich.markdown import Markdown
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn
-from core.state import TrialPhase
+from enum import Enum
+
+class TrialPhase(str, Enum):
+    INITIALIZATION = "initialization"
+    EVIDENCE_COLLECTION = "evidence_collection"
+    ARGUMENT_EXCHANGE = "argument_exchange"
+    VERDICT = "verdict"
+    COMPLETED = "completed"
 
 class TrialDisplay:
     """Handles real-time display of trial proceedings in the terminal"""

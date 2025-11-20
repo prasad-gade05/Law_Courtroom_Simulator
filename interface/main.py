@@ -5,11 +5,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from legal_rag.core.workflow import TrialWorkflow
-from legal_rag.agents import LawyerAgent, ProsecutorAgent, JudgeAgent, RetrieverAgent
-from legal_rag.core.pathway_store import PathwayVectorStore
-from legal_rag.tools.retrievers import create_web_retriever
-from legal_rag.interface.terminal_display import TrialDisplay
+from core.workflow import TrialWorkflow
+from agents import LawyerAgent, ProsecutorAgent, JudgeAgent, RetrieverAgent
+from core.pathway_store import PathwayVectorStore
+# from legal_rag.tools.retrievers import create_web_retriever
+from interface.terminal_display import TrialDisplay
 
 console = Console()
 
