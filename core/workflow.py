@@ -351,6 +351,7 @@ class TrialWorkflow:
                     # Extract node name and output
                     node_name = list(state.keys())[0] if state else "unknown"
                     node_output = state.get(node_name, {})
+                    next_node = "unknown"
                     
                     print(f"  Node: {node_name}")
                     
@@ -388,8 +389,8 @@ class TrialWorkflow:
                     # Create unique event key to prevent duplicates
                     event_key = f"{iteration_count}_{node_name}_{next_node if isinstance(node_output, dict) else 'unknown'}"
                     
-                    # Yield progress only if not duplicate
-                    if event_key not in yielded_events:
+                    # Yield progress only if not duplicate and not an internal self-loop thinking step
+                    if event_key not in yielded_events and next_node != "self":
                         yield {
                             "status": "progress",
                             "agent_name": node_name,
