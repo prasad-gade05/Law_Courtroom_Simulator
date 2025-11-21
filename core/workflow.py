@@ -294,6 +294,7 @@ class TrialWorkflow:
             # Stream workflow states
             try:
                 iteration_count = 0
+                current_debate_round = 0
                 max_iterations = 25  # Set to 25 to match LangGraph's default limit
                 yielded_events = set()  # NEW: Track yielded events to prevent duplicates
                 
@@ -327,7 +328,7 @@ class TrialWorkflow:
                                     yield {
                                         "status": "progress",
                                         "agent_name": "verdict",
-                                        "iteration": iteration_count,
+                                        "iteration": current_debate_round,
                                         "next_agent": "END",
                                         "agent_message": verdict_msg_content,
                                         "content": "Emergency verdict (preventing recursion limit)"
@@ -339,14 +340,11 @@ class TrialWorkflow:
                         yield {
                             "status": "done",
                             "agent_name": "verdict",
-                            "iteration": iteration_count,
+                            "iteration": current_debate_round,
                             "agent_message": "VERDICT DELIVERED: The court has concluded deliberations.",
                             "content": "Workflow completed with emergency verdict"
                         }
                         return
-                    
-                    print(f"\n[ITERATION {iteration_count}] Started")
-                    print(f"  Time elapsed: {time.time() - workflow_start_time:.1f}s")
                     
                     # Check if state is None or empty
                     if state is None or not state:
@@ -358,17 +356,24 @@ class TrialWorkflow:
                     node_output = state.get(node_name, {})
                     next_node = "unknown"
                     
+                    if isinstance(node_output, dict):
+                        # Accumulate actual debate round count from state updates if present
+                        val = node_output.get("iteration_count")
+                        if val is not None:
+                            current_debate_round = val
+                    
+                    print(f"\n[Step {iteration_count}] Started - Debate Round: {current_debate_round}")
+                    print(f"  Time elapsed: {time.time() - workflow_start_time:.1f}s")
                     print(f"  Node: {node_name}")
                     
                     if isinstance(node_output, dict):
                         next_node = node_output.get("next", "unknown")
                         message_count = len(node_output.get("messages", []))
-                        current_iteration = node_output.get("iteration_count", iteration_count)
                         print(f"  Next node: {next_node}")
                         print(f"  Messages in state: {message_count}")
                         
-                        # Update state iteration count
-                        node_output["iteration_count"] = iteration_count
+                        # Sync state iteration count with actual debate round instead of step counter
+                        node_output["iteration_count"] = current_debate_round
                     
                     # Extract agent message content for display
                     agent_message = ""
@@ -399,7 +404,7 @@ class TrialWorkflow:
                         yield {
                             "status": "progress",
                             "agent_name": node_name,
-                            "iteration": iteration_count,
+                            "iteration": current_debate_round,  # Stream clean debate round iteration
                             "next_agent": next_node if isinstance(node_output, dict) else "unknown",
                             "agent_message": agent_message,  # NEW: Include actual message
                             "content": f"Agent '{node_name}' completed"
@@ -443,7 +448,7 @@ class TrialWorkflow:
                                     yield {
                                         "status": "progress",
                                         "agent_name": "verdict",
-                                        "iteration": iteration_count,
+                                        "iteration": current_debate_round,  # Stream clean debate round iteration
                                         "next_agent": "END",
                                         "agent_message": verdict_message,
                                         "content": "Final verdict rendered"
@@ -484,7 +489,7 @@ class TrialWorkflow:
                             yield {
                                 "status": "done",
                                 "agent_name": "verdict" if verdict_found else "judge",
-                                "iteration": iteration_count,
+                                "iteration": current_debate_round,  # Stream clean debate round iteration
                                 "agent_message": final_verdict,
                                 "content": "Workflow completed with verdict"
                             }
