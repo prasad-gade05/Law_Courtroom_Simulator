@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional, Literal, TypedDict
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain.tools import BaseTool
-from .base import AgentState, safe_get_content
+from .base import AgentState, safe_get_content, format_messages_for_llm
 from pydantic import BaseModel, Field
 import os
 from langchain_core.messages.utils import get_buffer_string
@@ -103,7 +103,7 @@ When ready to conclude (iteration 18+), use phrases like:
         
         messages = [
             {"role": "system", "content": enhanced_prompt + "\n'current_task': " + thought_steps[current_step]}
-        ] + state["messages"]
+        ] + format_messages_for_llm(state["messages"])
 
         for i, llm in enumerate(self.llms):
             try:

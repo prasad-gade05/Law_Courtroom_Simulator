@@ -312,6 +312,12 @@ Create a unified summary (500-800 words) covering:
         for idx, doc_file in enumerate(document_files, 1):
             if "_summary" in doc_file.name:
                 continue
+            
+            summary_file = doc_file.parent / f"{doc_file.stem}_summary.txt"
+            if summary_file.exists():
+                # print(f"  Summary already exists for {doc_file.name} - skipping")
+                continue
+                
             print(f"\n[{idx}/{len(document_files)}] Processing: {doc_file.name}")
             
             try:

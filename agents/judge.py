@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Optional, Literal, TypedDict
 from langchain_core.messages import HumanMessage
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Field
-from agents.base import AgentState, safe_get_content
+from agents.base import AgentState, safe_get_content, format_messages_for_llm
 import re
 
 # class JudgeDecision(BaseModel):
@@ -117,7 +117,7 @@ Do NOT request information from retriever or web searcher agents. Evaluate based
         enhanced_prompt = self.system_prompt.format(iteration=iteration)
         messages = [
             {"role": "system", "content": enhanced_prompt}
-        ] + state["messages"] + [{"role": "system", "content": f"current_task: {thought_steps[current_step]}" }]
+        ] + format_messages_for_llm(state["messages"]) + [{"role": "system", "content": f"current_task: {thought_steps[current_step]}" }]
         # print(messages)
         # Process through LLMs with fallback mechanism
         # if state["thought_step"] != 4:

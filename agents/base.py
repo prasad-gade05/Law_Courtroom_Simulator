@@ -48,3 +48,38 @@ def safe_get_content(obj, default: str = "") -> str:
     else:
         return str(obj) if obj else default
 
+
+def format_messages_for_llm(messages: List[Any]) -> List[Dict[str, str]]:
+    """
+    Format message history for the LLM.
+    Prefixes each message content with its sender to ensure the LLM
+    unambiguously knows who spoke in the conversation history.
+    """
+    formatted = []
+    for msg in messages:
+        role = "user"
+        msg_name = getattr(msg, "name", "") or (msg.get("name", "") if isinstance(msg, dict) else "")
+        
+        # Determine prefix and role
+        prefix = ""
+        if msg_name == "lawyer":
+            prefix = "[DEFENSE LAWYER]: "
+        elif msg_name == "prosecutor":
+            prefix = "[PROSECUTION PROSECUTOR]: "
+        elif msg_name == "judge":
+            prefix = "[JUDGE]: "
+            role = "assistant"
+        elif msg_name == "kanoon_fetcher":
+            prefix = "[KANOON FETCHED CASES]: "
+        elif msg_name == "document_summarizer":
+            prefix = "[DOCUMENT SUMMARIZER]: "
+        elif msg_name == "initial_retriever":
+            prefix = "[DOCUMENT RETRIEVER]: "
+        
+        content = safe_get_content(msg)
+        formatted.append({
+            "role": role,
+            "content": f"{prefix}{content}"
+        })
+    return formatted
+

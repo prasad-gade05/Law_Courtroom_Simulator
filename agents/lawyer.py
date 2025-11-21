@@ -1,7 +1,7 @@
 from typing import Dict, Any, List, Optional, Literal, TypedDict
 from langchain_core.messages import HumanMessage
 from langchain.tools import BaseTool
-from .base import AgentState, safe_get_content
+from .base import AgentState, safe_get_content, format_messages_for_llm
 from core.enhanced_rag_system import EnhancedRAGSystem
 import re
 
@@ -97,7 +97,7 @@ When ready to conclude (iteration 18+), use phrases like:
         
         messages = [
             {"role": "system", "content": enhanced_prompt + "\n'current_task': " + thought_steps[current_step]}
-        ] + state["messages"]
+        ] + format_messages_for_llm(state["messages"])
 
         for i, llm in enumerate(self.llms):
             try:

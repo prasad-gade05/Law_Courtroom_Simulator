@@ -123,9 +123,10 @@ This is a default verdict issued due to system limitations and does not reflect 
         
         for msg in all_messages:
             # Extract message content safely
-            if hasattr(msg, 'name') and msg.name and hasattr(msg, 'content') and msg.content:
-                speaker = msg.name.upper()
-                content = msg.content
+            msg_name = getattr(msg, "name", "") or (msg.get("name", "") if isinstance(msg, dict) else "")
+            content = getattr(msg, "content", "") or (msg.get("content", "") if isinstance(msg, dict) else "")
+            if msg_name and content:
+                speaker = str(msg_name).upper()
                 transcript_parts.append(f"**{speaker} says:**\n{content}")
         
         transcript = "\n\n".join(transcript_parts)
