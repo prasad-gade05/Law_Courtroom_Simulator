@@ -195,6 +195,27 @@ class ChromaVectorStore:
         
         document_files = filtered_files
         
+        # Filter out documents that are already indexed in the collection to prevent redundant chunking and embedding
+        existing_filenames = set()
+        if self.vectorstore:
+            try:
+                res = self.vectorstore.get(include=["metadatas"])
+                if res and "metadatas" in res and res["metadatas"]:
+                    for meta in res["metadatas"]:
+                        if meta and "filename" in meta:
+                            existing_filenames.add(meta["filename"])
+            except Exception as e:
+                pass
+
+        if existing_filenames:
+            unindexed_files = []
+            for doc_file in document_files:
+                if doc_file.name in existing_filenames:
+                    print(f"   Skipping {doc_file.name} (already indexed in vector store)")
+                else:
+                    unindexed_files.append(doc_file)
+            document_files = unindexed_files
+        
         print(f"\nTotal documents to process: {len(document_files)}")
         print("=" * 60)
         
