@@ -283,7 +283,7 @@ class TrialWorkflow:
             print(f"  Thought step: 0")
             print(f"  Message count: {len(initial_state['messages'])}")
 
-            thread = {"configurable": {"thread_id": "1", "recursion_limit": 40}}  # Further increased to 40 to ensure verdict is reached
+            thread = {"configurable": {"thread_id": "1", "recursion_limit": 70}}  # Set to 70 to allow up to 5 full rounds of debate safely
 
             yield {
                 "status": "progress",
@@ -294,7 +294,7 @@ class TrialWorkflow:
             try:
                 iteration_count = 0
                 current_debate_round = 0
-                max_iterations = 25  # Set to 25 to match LangGraph's default limit
+                max_iterations = 55  # Set to 55 to align with safety limits
                 yielded_events = set()  # NEW: Track yielded events to prevent duplicates
                 
                 print(f"\nStarting workflow stream (max {max_iterations} iterations)")
@@ -305,8 +305,8 @@ class TrialWorkflow:
                     iteration_count += 1
                     
                     # SAFETY: Force verdict if we're approaching recursion limit
-                    if iteration_count >= 22:
-                        print(f"\n[SAFETY] Iteration {iteration_count} >= 22, forcing immediate verdict")
+                    if iteration_count >= 65:
+                        print(f"\n[SAFETY] Iteration {iteration_count} >= 65, forcing immediate verdict")
                         # Get the current state and generate verdict directly
                         current_state = initial_state if iteration_count == 1 else state
                         final_state_copy = None
